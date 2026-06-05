@@ -313,6 +313,16 @@ export default function NorbotCRM({
 
   const selectedLead = selectedLeadId ? leads.find((l) => l.id === selectedLeadId) : null;
 
+  // Pestañas superiores del Panel general (aplica a admin y limitados).
+  const PANEL_TABS = [
+    { id: "dashboard", label: "Panel general" },
+    { id: "leads", label: "Leads" },
+    { id: "embudo", label: "Embudo" },
+    { id: "pautas", label: "Pautas Meta" },
+    { id: "reportes", label: "Reportes" },
+  ];
+  const inPanel = PANEL_TABS.some((t) => t.id === page);
+
   return (
     <>
       <div className="layout">
@@ -326,7 +336,7 @@ export default function NorbotCRM({
           lockedCuenta={lockedCuenta}
         />
         <main className="main">
-          <header className="page-header">
+          <header className={`page-header${inPanel ? " has-tabs" : ""}`}>
             <div className="hl">
               <div className="eyebrow">
                 <span>{pageHeader.eyebrow}</span>
@@ -359,6 +369,20 @@ export default function NorbotCRM({
               />
             </div>
           </header>
+
+          {inPanel && (
+            <nav className="tabbar">
+              {PANEL_TABS.map((t) => (
+                <button
+                  key={t.id}
+                  className={`tab ${page === t.id ? "active" : ""}`}
+                  onClick={() => navigate(t.id)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </nav>
+          )}
 
           {page === "dashboard" && (
             <PanelGeneral

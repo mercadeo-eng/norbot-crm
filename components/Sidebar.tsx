@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { CUENTAS, CUENTA_BY_KEY } from "@/lib/data";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Lead } from "@/lib/types";
+
+const PANEL_PAGES = ["dashboard", "leads", "embudo", "pautas", "reportes"];
 
 interface SidebarProps {
   page: string;
@@ -36,13 +37,6 @@ export function Sidebar({ page, onNavigate, leads, realData, userEmail, isAdmin,
     router.refresh();
   }
 
-  const NavBtn = ({ id, icon, label }: { id: string; icon: ReactNode; label: string }) => (
-    <button onClick={() => onNavigate(id)} className={`nav-btn ${page === id ? "active" : ""}`}>
-      <span className="nav-icon">{icon}</span>
-      <span>{label}</span>
-    </button>
-  );
-
   const cuentaActual = lockedCuenta ? CUENTA_BY_KEY[lockedCuenta] : null;
 
   return (
@@ -55,11 +49,13 @@ export function Sidebar({ page, onNavigate, leads, realData, userEmail, isAdmin,
         </div>
       </div>
       <nav className="nav">
-        <NavBtn id="dashboard" icon="◧" label="Panel general" />
-        <NavBtn id="leads" icon="◆" label="Leads · Pipeline" />
-        <NavBtn id="embudo" icon="▽" label="Embudo" />
-        <NavBtn id="pautas" icon="◉" label="Pautas Meta" />
-        <NavBtn id="reportes" icon="◫" label="Reportes" />
+        <button
+          onClick={() => onNavigate("dashboard")}
+          className={`nav-btn ${PANEL_PAGES.includes(page) ? "active" : ""}`}
+        >
+          <span className="nav-icon">◧</span>
+          <span>Panel general</span>
+        </button>
         {isAdmin && (
           <>
             <div className="nav-section">
