@@ -2,17 +2,17 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent, ReactNode } from "react";
-import {
-  CUENTA_BY_KEY,
-  ETAPA_BY_KEY,
-  MESES,
-  MOCK_CAMPANAS,
-  MOCK_LEADS,
-  MOCK_METRICAS,
-  MOCK_POSTS,
-} from "@/lib/data";
-import { IMPORT_INFO, mergeByCuenta } from "@/lib/csv";
+import { CUENTA_BY_KEY, ETAPA_BY_KEY, MESES } from "@/lib/data";
+import { IMPORT_INFO } from "@/lib/csv";
 import type { Campana, ImportFlags, ImportTipo, Lead, Metrica, PostsByCuenta } from "@/lib/types";
+import {
+  addLeadAction,
+  deleteLeadAction,
+  importTableAction,
+  moveLeadAction,
+  restoreDemoAction,
+  updateLeadAction,
+} from "@/app/actions";
 import { Sidebar } from "./Sidebar";
 import { Stat } from "./charts";
 import { PanelGeneral } from "./PanelGeneral";
@@ -27,14 +27,24 @@ import { ImportModal } from "./ImportModal";
 
 type NewLeadData = Omit<Lead, "id" | "etapa" | "fechaIngreso">;
 
-export default function NorbotCRM() {
+interface NorbotCRMProps {
+  initialLeads: Lead[];
+  initialCampanas: Campana[];
+  initialMetricas: Metrica[];
+  initialPosts: PostsByCuenta;
+}
+
+export default function NorbotCRM({
+  initialLeads,
+  initialCampanas,
+  initialMetricas,
+  initialPosts,
+}: NorbotCRMProps) {
   const [page, setPage] = useState("dashboard");
-  const [leads, setLeads] = useState<Lead[]>(() =>
-    MOCK_LEADS.map((l) => (ETAPA_BY_KEY[l.etapa] ? l : { ...l, etapa: "contactado" })),
-  );
-  const [campanas, setCampanas] = useState<Campana[]>(MOCK_CAMPANAS);
-  const [metricas, setMetricas] = useState<Metrica[]>(MOCK_METRICAS);
-  const [posts, setPosts] = useState<PostsByCuenta>(MOCK_POSTS);
+  const [leads, setLeads] = useState<Lead[]>(initialLeads);
+  const [campanas, setCampanas] = useState<Campana[]>(initialCampanas);
+  const [metricas, setMetricas] = useState<Metrica[]>(initialMetricas);
+  const [posts, setPosts] = useState<PostsByCuenta>(initialPosts);
   const [imported, setImported] = useState<ImportFlags>({
     leads: false,
     campanas: false,
@@ -113,54 +123,88 @@ export default function NorbotCRM() {
     return { total, enProceso, visitas, cerrados, conv };
   }, [leads]);
 
-  function moveLead(id: string, newEtapa: string) {
+  async function moveLead(id: string, newEtapa: string) {
     const lead = leads.find((l) => l.id === id);
     if (!lead || lead.etapa === newEtapa) return;
+    const prev = leads;
     setLeads((xs) => xs.map((l) => (l.id === id ? { ...l, etapa: newEtapa } : l)));
     showToast(`${lead.nombre} → ${ETAPA_BY_KEY[newEtapa].title}`);
+    try {
+      await moveLeadAction(id, newEtapa);
+    } catch {
+      setLeads(prev);
+      showToast("⚠ No se pudo guardar el cambio");
+    }
   }
-  function updateLead(id: string, patch: Partial<Lead>) {
+  async function updateLead(id: string, patch: Partial<Lead>) {
+    const prev = leads;
     setLeads((xs) => xs.map((l) => (l.id === id ? { ...l, ...patch } : l)));
+    try {
+      await updateLeadAction(id, patch);
+    } catch {
+      setLeads(prev);
+      showToast("⚠ No se pudieron guardar los cambios");
+    }
   }
-  function deleteLead(id: string) {
+  async function deleteLead(id: string) {
     const lead = leads.find((l) => l.id === id);
     if (!lead) return;
     if (!confirm(`¿Eliminar a ${lead.nombre}? Esta acción no se puede deshacer.`)) return;
+    const prev = leads;
     setLeads((xs) => xs.filter((l) => l.id !== id));
     setSelectedLeadId(null);
     showToast(`Lead eliminado`);
+    try {
+      await deleteLeadAction(id);
+    } catch {
+      setLeads(prev);
+      showToast("⚠ No se pudo eliminar el lead");
+    }
   }
-  function addLead(data: NewLeadData) {
-    const id = "L" + String(Date.now()).slice(-6);
-    const newLead: Lead = { id, etapa: "nuevo", fechaIngreso: new Date().toISOString().slice(0, 10), ...data };
-    setLeads((xs) => [newLead, ...xs]);
-    showToast(`${newLead.nombre} agregado`);
+  async function addLead(data: NewLeadData) {
+    try {
+      const created = await addLeadAction(data);
+      setLeads((xs) => [created, ...xs]);
+      showToast(`${created.nombre} agregado`);
+    } catch {
+      showToast("⚠ No se pudo crear el lead");
+    }
   }
 
-  /* importación con fusión por cuenta */
-  function aplicarImport(tipo: ImportTipo, data: Lead[] | Campana[] | Metrica[] | PostsByCuenta) {
-    if (tipo === "leads") setLeads((prev) => mergeByCuenta(prev, data as Lead[], "L"));
-    else if (tipo === "campanas") setCampanas((prev) => mergeByCuenta(prev, data as Campana[], "C"));
-    else if (tipo === "metricas") setMetricas((prev) => mergeByCuenta(prev, data as Metrica[], null));
-    else if (tipo === "posts") setPosts((prev) => ({ ...prev, ...(data as PostsByCuenta) }));
-    setImported((s) => ({ ...s, [tipo]: true }));
+  /* importación con fusión por cuenta (persistida en Supabase) */
+  async function aplicarImport(tipo: ImportTipo, data: Lead[] | Campana[] | Metrica[] | PostsByCuenta) {
     const cuentasIn =
       tipo === "posts"
         ? Object.keys(data as PostsByCuenta)
         : [...new Set((data as { cuenta: string }[]).map((x) => x.cuenta))];
-    const nombres = cuentasIn
-      .map((k) => CUENTA_BY_KEY[k]?.nombreCorto)
-      .filter(Boolean)
-      .join(", ");
-    showToast(`${IMPORT_INFO[tipo].label} importados${nombres ? " · " + nombres : ""}`);
+    try {
+      const fresh = await importTableAction(tipo, data);
+      setLeads(fresh.leads);
+      setCampanas(fresh.campanas);
+      setMetricas(fresh.metricas);
+      setPosts(fresh.posts);
+      setImported((s) => ({ ...s, [tipo]: true }));
+      const nombres = cuentasIn
+        .map((k) => CUENTA_BY_KEY[k]?.nombreCorto)
+        .filter(Boolean)
+        .join(", ");
+      showToast(`${IMPORT_INFO[tipo].label} importados${nombres ? " · " + nombres : ""}`);
+    } catch {
+      showToast("⚠ No se pudo importar a la base de datos");
+    }
   }
-  function restaurarDemo() {
-    setLeads(MOCK_LEADS.map((l) => (ETAPA_BY_KEY[l.etapa] ? l : { ...l, etapa: "contactado" })));
-    setCampanas(MOCK_CAMPANAS);
-    setMetricas(MOCK_METRICAS);
-    setPosts(MOCK_POSTS);
-    setImported({ leads: false, campanas: false, metricas: false, posts: false });
-    showToast("Datos demo restaurados");
+  async function restaurarDemo() {
+    try {
+      const fresh = await restoreDemoAction();
+      setLeads(fresh.leads);
+      setCampanas(fresh.campanas);
+      setMetricas(fresh.metricas);
+      setPosts(fresh.posts);
+      setImported({ leads: false, campanas: false, metricas: false, posts: false });
+      showToast("Datos demo restaurados");
+    } catch {
+      showToast("⚠ No se pudo restaurar la demo");
+    }
   }
   function abrirImport(cuentaKey?: string) {
     setImportCuenta(cuentaKey || null);
