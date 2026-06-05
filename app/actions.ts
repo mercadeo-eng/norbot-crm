@@ -1,6 +1,7 @@
 "use server";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   CUENTAS,
   MOCK_CAMPANAS,
@@ -27,8 +28,18 @@ function check<T>(res: Result<T>, ctx: string): T {
   return res.data as T;
 }
 
+/** Exige sesión activa. Defensa en profundidad además del proxy. */
+async function requireUser() {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("No autorizado");
+}
+
 /* ─────────────────── operaciones por lead ─────────────────── */
 export async function addLeadAction(data: Omit<Lead, "id" | "etapa" | "fechaIngreso">): Promise<Lead> {
+  await requireUser();
   const admin = createSupabaseAdminClient();
   const row = leadToInsert({
     ...data,
@@ -40,18 +51,21 @@ export async function addLeadAction(data: Omit<Lead, "id" | "etapa" | "fechaIngr
 }
 
 export async function moveLeadAction(id: string, etapa: string): Promise<void> {
+  await requireUser();
   const admin = createSupabaseAdminClient();
   const res = await admin.from("leads").update(leadPatchToRow({ etapa })).eq("id", id);
   check(res, "moveLead");
 }
 
 export async function updateLeadAction(id: string, patch: Partial<Lead>): Promise<void> {
+  await requireUser();
   const admin = createSupabaseAdminClient();
   const res = await admin.from("leads").update(leadPatchToRow(patch)).eq("id", id);
   check(res, "updateLead");
 }
 
 export async function deleteLeadAction(id: string): Promise<void> {
+  await requireUser();
   const admin = createSupabaseAdminClient();
   const res = await admin.from("leads").delete().eq("id", id);
   check(res, "deleteLead");
@@ -63,6 +77,7 @@ export async function importTableAction(
   tipo: ImportTipo,
   data: Lead[] | Campana[] | Metrica[] | PostsByCuenta,
 ): Promise<CrmData> {
+  await requireUser();
   const admin = createSupabaseAdminClient();
 
   if (tipo === "leads") {
@@ -94,6 +109,7 @@ export async function importTableAction(
 /* ─────────────────── restaurar datos demo ─────────────────── */
 /** Reescribe todas las tablas con la semilla demo (cuentas + leads + campañas + métricas + posts). */
 export async function restoreDemoAction(): Promise<CrmData> {
+  await requireUser();
   const admin = createSupabaseAdminClient();
 
   // Borrar hijos primero (FK → cuentas), luego cuentas.

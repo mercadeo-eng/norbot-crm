@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { CUENTAS } from "@/lib/data";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Lead } from "@/lib/types";
 
 interface SidebarProps {
@@ -10,9 +12,12 @@ interface SidebarProps {
   onNavigate: (id: string) => void;
   leads: Lead[];
   realData: boolean;
+  userEmail: string;
 }
 
-export function Sidebar({ page, onNavigate, leads, realData }: SidebarProps) {
+export function Sidebar({ page, onNavigate, leads, realData, userEmail }: SidebarProps) {
+  const router = useRouter();
+  const [signingOut, setSigningOut] = useState(false);
   const leadsPorCuenta = useMemo(() => {
     const map: Record<string, number> = {};
     CUENTAS.forEach((c) => {
@@ -20,6 +25,14 @@ export function Sidebar({ page, onNavigate, leads, realData }: SidebarProps) {
     });
     return map;
   }, [leads]);
+
+  async function handleSignOut() {
+    setSigningOut(true);
+    const supabase = createSupabaseBrowserClient();
+    await supabase.auth.signOut();
+    router.replace("/login");
+    router.refresh();
+  }
 
   const NavBtn = ({ id, icon, label }: { id: string; icon: ReactNode; label: string }) => (
     <button onClick={() => onNavigate(id)} className={`nav-btn ${page === id ? "active" : ""}`}>
@@ -68,12 +81,15 @@ export function Sidebar({ page, onNavigate, leads, realData }: SidebarProps) {
       <div className="sidebar-foot">
         <div className="foot-row">
           <span className="foot-key">Usuario</span>
-          <span className="foot-val">david@istmomarketingpa.com</span>
+          <span className="foot-val">{userEmail || "—"}</span>
         </div>
         <div className="foot-row">
           <span className="foot-key">Fuente</span>
           <span className="foot-val">{realData ? "CSV importado" : "Demo"}</span>
         </div>
+        <button className="btn sign-out-btn" onClick={handleSignOut} disabled={signingOut}>
+          {signingOut ? "Cerrando…" : "Cerrar sesión"}
+        </button>
       </div>
     </aside>
   );

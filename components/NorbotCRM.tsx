@@ -32,6 +32,7 @@ interface NorbotCRMProps {
   initialCampanas: Campana[];
   initialMetricas: Metrica[];
   initialPosts: PostsByCuenta;
+  userEmail: string;
 }
 
 export default function NorbotCRM({
@@ -39,6 +40,7 @@ export default function NorbotCRM({
   initialCampanas,
   initialMetricas,
   initialPosts,
+  userEmail,
 }: NorbotCRMProps) {
   const [page, setPage] = useState("dashboard");
   const [leads, setLeads] = useState<Lead[]>(initialLeads);
@@ -294,7 +296,7 @@ export default function NorbotCRM({
   return (
     <>
       <div className="layout">
-        <Sidebar page={page} onNavigate={setPage} leads={leads} realData={realData} />
+        <Sidebar page={page} onNavigate={setPage} leads={leads} realData={realData} userEmail={userEmail} />
         <main className="main">
           <header className="page-header">
             <div className="hl">

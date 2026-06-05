@@ -361,3 +361,16 @@ input, select, textarea { font-family: inherit; color: var(--ink); }
   .main { padding: 0; }
   .slide { box-shadow: none; border: 0; border-radius: 0; min-height: 100vh; aspect-ratio: unset; }
 }
+
+/* ─────── Login ─────── */
+.login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.login-card { width: min(400px, 100%); background: var(--paper); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow-card); padding: 32px 30px; }
+.login-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.login-title { font-family: 'Fraunces', serif; font-weight: 400; font-size: 26px; letter-spacing: -.02em; color: var(--ink); margin: 0; }
+.login-sub { font-size: 13px; color: var(--muted); margin: 4px 0 0; }
+.login-form { display: flex; flex-direction: column; gap: 14px; margin-top: 18px; }
+.login-error { font-size: 12.5px; color: var(--rust); background: rgba(161,79,58,.08); border: 1px solid rgba(161,79,58,.25); padding: 9px 12px; border-radius: 6px; }
+.login-btn { justify-content: center; margin-top: 4px; }
+
+/* ─────── Cerrar sesión ─────── */
+.sign-out-btn { width: 100%; justify-content: center; margin-top: 6px; font-size: 12px; padding: 8px 12px; }
