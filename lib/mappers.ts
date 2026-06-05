@@ -162,13 +162,21 @@ export interface CrmData {
   posts: PostsByCuenta;
 }
 
-/** Lee todas las tablas transaccionales y arma el estado del CRM. */
-export async function fetchData(supabase: SupabaseClient): Promise<CrmData> {
+/**
+ * Lee todas las tablas transaccionales y arma el estado del CRM.
+ * Si se pasa `cuenta`, restringe la lectura a esa cuenta (usuarios limitados).
+ */
+export async function fetchData(supabase: SupabaseClient, cuenta?: string | null): Promise<CrmData> {
+  const q = (table: string, orderCol: string, asc: boolean) => {
+    const sel = supabase.from(table).select("*");
+    const filtered = cuenta ? sel.eq("cuenta", cuenta) : sel;
+    return filtered.order(orderCol, { ascending: asc });
+  };
   const [leadsR, campR, metR, postR] = await Promise.all([
-    supabase.from("leads").select("*").order("fecha_ingreso", { ascending: true }),
-    supabase.from("campanas").select("*").order("inicio", { ascending: true }),
-    supabase.from("metricas").select("*").order("mes", { ascending: true }),
-    supabase.from("posts").select("*").order("fecha", { ascending: false }),
+    q("leads", "fecha_ingreso", true),
+    q("campanas", "inicio", true),
+    q("metricas", "mes", true),
+    q("posts", "fecha", false),
   ]);
   const leads = (leadsR.data ?? []).map(rowToLead);
   const campanas = (campR.data ?? []).map(rowToCampana);

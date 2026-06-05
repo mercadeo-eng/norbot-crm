@@ -18,6 +18,7 @@ interface LeadsPipelineProps {
   onDragLeave: (e: DragEvent) => void;
   onOpenLead: (id: string) => void;
   onNewLead: () => void;
+  lockedCuenta?: string | null;
 }
 
 export function LeadsPipeline({
@@ -32,6 +33,7 @@ export function LeadsPipeline({
   onDragLeave,
   onOpenLead,
   onNewLead,
+  lockedCuenta,
 }: LeadsPipelineProps) {
   return (
     <div className="page">
@@ -44,14 +46,16 @@ export function LeadsPipeline({
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <select className="select" value={filtroCuenta} onChange={(e) => setFiltroCuenta(e.target.value)}>
-          <option value="todas">Todas las cuentas</option>
-          {CUENTAS.map((c) => (
-            <option key={c.key} value={c.key}>
-              {c.nombreCorto}
-            </option>
-          ))}
-        </select>
+        {!lockedCuenta && (
+          <select className="select" value={filtroCuenta} onChange={(e) => setFiltroCuenta(e.target.value)}>
+            <option value="todas">Todas las cuentas</option>
+            {CUENTAS.map((c) => (
+              <option key={c.key} value={c.key}>
+                {c.nombreCorto}
+              </option>
+            ))}
+          </select>
+        )}
         <button className="btn btn-primary" onClick={onNewLead}>
           <span className="plus">＋</span> Nuevo lead
         </button>

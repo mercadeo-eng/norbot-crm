@@ -10,7 +10,7 @@ import { Donut } from "./Donut";
 type CumItem = Etapa & { value: number };
 type Step = { from: CumItem; to: CumItem; lost: number; retain: number };
 
-export function EmbudoPage({ leads }: { leads: Lead[] }) {
+export function EmbudoPage({ leads, lockedCuenta }: { leads: Lead[]; lockedCuenta?: string | null }) {
   const [filtro, setFiltro] = useState("todas");
   const lc = useMemo(
     () => (filtro === "todas" ? leads : leads.filter((l) => l.cuenta === filtro)),
@@ -47,14 +47,16 @@ export function EmbudoPage({ leads }: { leads: Lead[] }) {
   return (
     <div className="page">
       <div className="toolbar">
-        <select className="select" value={filtro} onChange={(e) => setFiltro(e.target.value)}>
-          <option value="todas">Todas las cuentas</option>
-          {CUENTAS.map((c) => (
-            <option key={c.key} value={c.key}>
-              {c.nombreCorto}
-            </option>
-          ))}
-        </select>
+        {!lockedCuenta && (
+          <select className="select" value={filtro} onChange={(e) => setFiltro(e.target.value)}>
+            <option value="todas">Todas las cuentas</option>
+            {CUENTAS.map((c) => (
+              <option key={c.key} value={c.key}>
+                {c.nombreCorto}
+              </option>
+            ))}
+          </select>
+        )}
         <span className="toolbar-hint">{total} leads en el embudo</span>
       </div>
 

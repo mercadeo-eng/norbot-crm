@@ -33,6 +33,9 @@ interface NorbotCRMProps {
   initialMetricas: Metrica[];
   initialPosts: PostsByCuenta;
   userEmail: string;
+  role: "admin" | "cuenta";
+  /** Cuenta a la que está limitado el usuario; null para admin. */
+  allowedCuenta: string | null;
 }
 
 export default function NorbotCRM({
@@ -41,7 +44,12 @@ export default function NorbotCRM({
   initialMetricas,
   initialPosts,
   userEmail,
+  role,
+  allowedCuenta,
 }: NorbotCRMProps) {
+  const isAdmin = role === "admin";
+  const lockedCuenta = isAdmin ? null : allowedCuenta;
+
   const [page, setPage] = useState("dashboard");
   const [leads, setLeads] = useState<Lead[]>(initialLeads);
   const [campanas, setCampanas] = useState<Campana[]>(initialCampanas);
@@ -57,9 +65,9 @@ export default function NorbotCRM({
   const [showNewLead, setShowNewLead] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [importCuenta, setImportCuenta] = useState<string | null>(null);
-  const [filtroCuenta, setFiltroCuenta] = useState("todas");
+  const [filtroCuenta, setFiltroCuenta] = useState(lockedCuenta ?? "todas");
   const [search, setSearch] = useState("");
-  const [reporteCuenta, setReporteCuenta] = useState("san_antonio");
+  const [reporteCuenta, setReporteCuenta] = useState(lockedCuenta ?? "san_antonio");
   const [reporteMes, setReporteMes] = useState("2026-05");
   const [toast, setToast] = useState("");
   const dragLeadId = useRef<string | null>(null);
@@ -71,6 +79,15 @@ export default function NorbotCRM({
   }, [metricas]);
 
   const realData = imported.leads || imported.campanas || imported.metricas || imported.posts;
+
+  // Navegación con guard: un usuario limitado no puede abrir otras cuentas.
+  function navigate(p: string) {
+    if (p.startsWith("cuenta:")) {
+      const key = p.split(":")[1];
+      if (!isAdmin && key !== lockedCuenta) return;
+    }
+    setPage(p);
+  }
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -173,7 +190,7 @@ export default function NorbotCRM({
     }
   }
 
-  /* importación con fusión por cuenta (persistida en Supabase) */
+  /* importación con fusión por cuenta (persistida en Supabase, solo admin) */
   async function aplicarImport(tipo: ImportTipo, data: Lead[] | Campana[] | Metrica[] | PostsByCuenta) {
     const cuentasIn =
       tipo === "posts"
@@ -209,6 +226,7 @@ export default function NorbotCRM({
     }
   }
   function abrirImport(cuentaKey?: string) {
+    if (!isAdmin) return;
     setImportCuenta(cuentaKey || null);
     setShowImport(true);
   }
@@ -242,7 +260,9 @@ export default function NorbotCRM({
             Panel <em>general</em>
           </>
         ),
-        sub: "Vista agregada de los 3 desarrollos en redes",
+        sub: lockedCuenta
+          ? `Cuenta ${CUENTA_BY_KEY[lockedCuenta]?.nombreCorto ?? ""}`
+          : "Vista agregada de los 3 desarrollos en redes",
       };
     if (page === "leads")
       return {
@@ -286,17 +306,25 @@ export default function NorbotCRM({
       };
     if (page.startsWith("cuenta:")) {
       const c = CUENTA_BY_KEY[page.split(":")[1]];
-      return { eyebrow: `${c.tipo} · ${c.ubicacion}`, title: <>{c.nombreCorto}</>, sub: c.handle };
+      return { eyebrow: `${c?.tipo ?? ""} · ${c?.ubicacion ?? ""}`, title: <>{c?.nombreCorto ?? ""}</>, sub: c?.handle ?? "" };
     }
     return { eyebrow: "", title: "", sub: "" };
-  }, [page]);
+  }, [page, lockedCuenta]);
 
   const selectedLead = selectedLeadId ? leads.find((l) => l.id === selectedLeadId) : null;
 
   return (
     <>
       <div className="layout">
-        <Sidebar page={page} onNavigate={setPage} leads={leads} realData={realData} userEmail={userEmail} />
+        <Sidebar
+          page={page}
+          onNavigate={navigate}
+          leads={leads}
+          realData={realData}
+          userEmail={userEmail}
+          isAdmin={isAdmin}
+          lockedCuenta={lockedCuenta}
+        />
         <main className="main">
           <header className="page-header">
             <div className="hl">
@@ -306,7 +334,7 @@ export default function NorbotCRM({
                   <span className={`sync-dot ${realData ? "" : "local"}`} />
                   {realData ? "Datos importados" : "Modo demo"}
                 </span>
-                {page.startsWith("cuenta:") && (
+                {isAdmin && page.startsWith("cuenta:") && (
                   <button className="btn btn-primary hero-import-btn" onClick={() => abrirImport(page.split(":")[1])}>
                     <span className="import-ico">↥</span> Importar datos
                   </button>
@@ -338,7 +366,8 @@ export default function NorbotCRM({
               leads={leads}
               campanas={campanas}
               meses={meses}
-              onOpenCuenta={(k) => setPage(`cuenta:${k}`)}
+              onOpenCuenta={(k) => navigate(`cuenta:${k}`)}
+              lockedCuenta={lockedCuenta}
             />
           )}
           {page === "leads" && (
@@ -354,11 +383,17 @@ export default function NorbotCRM({
               onDragLeave={onDragLeave}
               onOpenLead={setSelectedLeadId}
               onNewLead={() => setShowNewLead(true)}
+              lockedCuenta={lockedCuenta}
             />
           )}
-          {page === "embudo" && <EmbudoPage leads={leads} />}
+          {page === "embudo" && <EmbudoPage leads={leads} lockedCuenta={lockedCuenta} />}
           {page === "pautas" && (
-            <PautasPage campanas={campanas} filtroCuenta={filtroCuenta} setFiltroCuenta={setFiltroCuenta} />
+            <PautasPage
+              campanas={campanas}
+              filtroCuenta={filtroCuenta}
+              setFiltroCuenta={setFiltroCuenta}
+              lockedCuenta={lockedCuenta}
+            />
           )}
           {page === "reportes" && (
             <ReportesPage
@@ -371,6 +406,7 @@ export default function NorbotCRM({
               campanas={campanas}
               posts={posts}
               meses={meses}
+              lockedCuenta={lockedCuenta}
             />
           )}
           {page.startsWith("cuenta:") && (
@@ -418,9 +454,10 @@ export default function NorbotCRM({
             addLead(data);
             setShowNewLead(false);
           }}
+          lockedCuenta={lockedCuenta}
         />
       )}
-      {showImport && (
+      {showImport && isAdmin && (
         <ImportModal
           imported={imported}
           cuentaContext={importCuenta}

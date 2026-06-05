@@ -15,6 +15,7 @@ interface ReportesPageProps {
   campanas: Campana[];
   posts: PostsByCuenta;
   meses: string[];
+  lockedCuenta?: string | null;
 }
 
 export function ReportesPage({
@@ -27,6 +28,7 @@ export function ReportesPage({
   campanas,
   posts,
   meses,
+  lockedCuenta,
 }: ReportesPageProps) {
   const c = CUENTA_BY_KEY[cuenta];
   const m = metricas.find((x) => x.cuenta === cuenta && x.mes === mes);
@@ -43,13 +45,15 @@ export function ReportesPage({
   return (
     <div className="page">
       <div className="toolbar">
-        <select className="select" value={cuenta} onChange={(e) => setCuenta(e.target.value)}>
-          {CUENTAS.map((cu) => (
-            <option key={cu.key} value={cu.key}>
-              {cu.nombreCorto}
-            </option>
-          ))}
-        </select>
+        {!lockedCuenta && (
+          <select className="select" value={cuenta} onChange={(e) => setCuenta(e.target.value)}>
+            {CUENTAS.map((cu) => (
+              <option key={cu.key} value={cu.key}>
+                {cu.nombreCorto}
+              </option>
+            ))}
+          </select>
+        )}
         <select className="select" value={mes} onChange={(e) => setMes(e.target.value)}>
           {meses
             .slice()

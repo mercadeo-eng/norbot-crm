@@ -13,9 +13,11 @@ interface PanelGeneralProps {
   campanas: Campana[];
   meses: string[];
   onOpenCuenta: (k: string) => void;
+  lockedCuenta?: string | null;
 }
 
-export function PanelGeneral({ metricas, leads, campanas, meses, onOpenCuenta }: PanelGeneralProps) {
+export function PanelGeneral({ metricas, leads, campanas, meses, onOpenCuenta, lockedCuenta }: PanelGeneralProps) {
+  const cuentasBase = lockedCuenta ? CUENTAS.filter((c) => c.key === lockedCuenta) : CUENTAS;
   const mesActual = meses[meses.length - 1];
   const mesPrev = meses[meses.length - 2] || mesActual;
   const m = metricas.filter((x) => x.mes === mesActual);
@@ -40,7 +42,7 @@ export function PanelGeneral({ metricas, leads, campanas, meses, onOpenCuenta }:
   const seriesInv = meses.map((mes) =>
     metricas.filter((x) => x.mes === mes).reduce((a, x) => a + x.inversion, 0),
   );
-  const porCuenta = CUENTAS.map((c) => {
+  const porCuenta = cuentasBase.map((c) => {
     const cm = m.find((x) => x.cuenta === c.key);
     const cmPrev = mPrev.find((x) => x.cuenta === c.key);
     const lc = leads.filter((l) => l.cuenta === c.key);
@@ -78,7 +80,9 @@ export function PanelGeneral({ metricas, leads, campanas, meses, onOpenCuenta }:
         <header className="card-head">
           <div>
             <h3 className="card-title">Evolución últimos {meses.length} meses</h3>
-            <p className="card-sub">Alcance · Leads · Inversión (los 3 desarrollos sumados)</p>
+            <p className="card-sub">
+              Alcance · Leads · Inversión{lockedCuenta ? "" : " (los 3 desarrollos sumados)"}
+            </p>
           </div>
         </header>
         <div className="trend-grid">
@@ -90,8 +94,12 @@ export function PanelGeneral({ metricas, leads, campanas, meses, onOpenCuenta }:
       <section className="card">
         <header className="card-head">
           <div>
-            <h3 className="card-title">Desempeño por cuenta · {mesLabel(mesActual)}</h3>
-            <p className="card-sub">Click una cuenta para abrir su panel detallado</p>
+            <h3 className="card-title">
+              {lockedCuenta ? "Resumen de la cuenta" : "Desempeño por cuenta"} · {mesLabel(mesActual)}
+            </h3>
+            <p className="card-sub">
+              {lockedCuenta ? "Detalle del desarrollo" : "Click una cuenta para abrir su panel detallado"}
+            </p>
           </div>
         </header>
         <div className="cuenta-cards">

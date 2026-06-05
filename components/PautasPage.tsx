@@ -10,9 +10,10 @@ interface PautasPageProps {
   campanas: Campana[];
   filtroCuenta: string;
   setFiltroCuenta: (v: string) => void;
+  lockedCuenta?: string | null;
 }
 
-export function PautasPage({ campanas, filtroCuenta, setFiltroCuenta }: PautasPageProps) {
+export function PautasPage({ campanas, filtroCuenta, setFiltroCuenta, lockedCuenta }: PautasPageProps) {
   const filtradas = filtroCuenta === "todas" ? campanas : campanas.filter((c) => c.cuenta === filtroCuenta);
   const totGasto = filtradas.reduce((a, c) => a + c.gasto, 0);
   const totLeads = filtradas.reduce((a, c) => a + c.leads, 0);
@@ -28,14 +29,16 @@ export function PautasPage({ campanas, filtroCuenta, setFiltroCuenta }: PautasPa
   return (
     <div className="page">
       <div className="toolbar">
-        <select className="select" value={filtroCuenta} onChange={(e) => setFiltroCuenta(e.target.value)}>
-          <option value="todas">Todas las cuentas</option>
-          {CUENTAS.map((c) => (
-            <option key={c.key} value={c.key}>
-              {c.nombreCorto}
-            </option>
-          ))}
-        </select>
+        {!lockedCuenta && (
+          <select className="select" value={filtroCuenta} onChange={(e) => setFiltroCuenta(e.target.value)}>
+            <option value="todas">Todas las cuentas</option>
+            {CUENTAS.map((c) => (
+              <option key={c.key} value={c.key}>
+                {c.nombreCorto}
+              </option>
+            ))}
+          </select>
+        )}
         <span className="toolbar-hint">
           {filtradas.length} campañas · {filtradas.filter((c) => c.estado === "activa").length} activas
         </span>

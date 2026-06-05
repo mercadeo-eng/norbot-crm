@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CUENTAS, ORIGENES, PRESUPUESTOS } from "@/lib/data";
+import { CUENTAS, CUENTA_BY_KEY, ORIGENES, PRESUPUESTOS } from "@/lib/data";
 import type { Lead } from "@/lib/types";
 
 type NewLeadData = Omit<Lead, "id" | "etapa" | "fechaIngreso">;
@@ -9,14 +9,15 @@ type NewLeadData = Omit<Lead, "id" | "etapa" | "fechaIngreso">;
 interface NewLeadModalProps {
   onClose: () => void;
   onCreate: (data: NewLeadData) => void;
+  lockedCuenta?: string | null;
 }
 
-export function NewLeadModal({ onClose, onCreate }: NewLeadModalProps) {
+export function NewLeadModal({ onClose, onCreate, lockedCuenta }: NewLeadModalProps) {
   const [form, setForm] = useState<NewLeadData>({
     nombre: "",
     telefono: "",
     email: "",
-    cuenta: "san_antonio",
+    cuenta: lockedCuenta ?? "san_antonio",
     origen: "Pauta IG",
     campana: "",
     presupuesto: "$180-250k",
@@ -64,13 +65,17 @@ export function NewLeadModal({ onClose, onCreate }: NewLeadModalProps) {
             </div>
             <div className="fld">
               <label>Cuenta</label>
-              <select value={form.cuenta} onChange={(e) => setForm({ ...form, cuenta: e.target.value })}>
-                {CUENTAS.map((c) => (
-                  <option key={c.key} value={c.key}>
-                    {c.nombreCorto}
-                  </option>
-                ))}
-              </select>
+              {lockedCuenta ? (
+                <input value={CUENTA_BY_KEY[lockedCuenta]?.nombreCorto ?? lockedCuenta} disabled />
+              ) : (
+                <select value={form.cuenta} onChange={(e) => setForm({ ...form, cuenta: e.target.value })}>
+                  {CUENTAS.map((c) => (
+                    <option key={c.key} value={c.key}>
+                      {c.nombreCorto}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
           <div className="fld-row">

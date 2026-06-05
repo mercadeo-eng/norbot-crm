@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { CUENTAS } from "@/lib/data";
+import { CUENTAS, CUENTA_BY_KEY } from "@/lib/data";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Lead } from "@/lib/types";
 
@@ -13,9 +13,11 @@ interface SidebarProps {
   leads: Lead[];
   realData: boolean;
   userEmail: string;
+  isAdmin: boolean;
+  lockedCuenta: string | null;
 }
 
-export function Sidebar({ page, onNavigate, leads, realData, userEmail }: SidebarProps) {
+export function Sidebar({ page, onNavigate, leads, realData, userEmail, isAdmin, lockedCuenta }: SidebarProps) {
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
   const leadsPorCuenta = useMemo(() => {
@@ -41,6 +43,8 @@ export function Sidebar({ page, onNavigate, leads, realData, userEmail }: Sideba
     </button>
   );
 
+  const cuentaActual = lockedCuenta ? CUENTA_BY_KEY[lockedCuenta] : null;
+
   return (
     <aside className="sidebar">
       <div className="brand-row">
@@ -56,27 +60,45 @@ export function Sidebar({ page, onNavigate, leads, realData, userEmail }: Sideba
         <NavBtn id="embudo" icon="▽" label="Embudo" />
         <NavBtn id="pautas" icon="◉" label="Pautas Meta" />
         <NavBtn id="reportes" icon="◫" label="Reportes" />
-        <div className="nav-section">
-          <span>Cuentas Instagram</span>
-          <span className="muted-small">{CUENTAS.length}</span>
-        </div>
-        {CUENTAS.map((c) => {
-          const active = page === `cuenta:${c.key}`;
-          return (
-            <button
-              key={c.key}
-              onClick={() => onNavigate(`cuenta:${c.key}`)}
-              className={`cuenta-btn ${active ? "active" : ""}`}
-            >
-              <span className="cuenta-dot" style={{ background: c.brand }} />
+        {isAdmin && (
+          <>
+            <div className="nav-section">
+              <span>Cuentas Instagram</span>
+              <span className="muted-small">{CUENTAS.length}</span>
+            </div>
+            {CUENTAS.map((c) => {
+              const active = page === `cuenta:${c.key}`;
+              return (
+                <button
+                  key={c.key}
+                  onClick={() => onNavigate(`cuenta:${c.key}`)}
+                  className={`cuenta-btn ${active ? "active" : ""}`}
+                >
+                  <span className="cuenta-dot" style={{ background: c.brand }} />
+                  <div className="cuenta-text">
+                    <div className="cuenta-name">{c.nombreCorto}</div>
+                    <div className="cuenta-handle">{c.handle}</div>
+                  </div>
+                  <span className="cuenta-count">{leadsPorCuenta[c.key]}</span>
+                </button>
+              );
+            })}
+          </>
+        )}
+        {!isAdmin && cuentaActual && (
+          <>
+            <div className="nav-section">
+              <span>Cuenta</span>
+            </div>
+            <div className="cuenta-btn" style={{ cursor: "default" }}>
+              <span className="cuenta-dot" style={{ background: cuentaActual.brand }} />
               <div className="cuenta-text">
-                <div className="cuenta-name">{c.nombreCorto}</div>
-                <div className="cuenta-handle">{c.handle}</div>
+                <div className="cuenta-name">{cuentaActual.nombreCorto}</div>
+                <div className="cuenta-handle">{cuentaActual.handle}</div>
               </div>
-              <span className="cuenta-count">{leadsPorCuenta[c.key]}</span>
-            </button>
-          );
-        })}
+            </div>
+          </>
+        )}
       </nav>
       <div className="sidebar-foot">
         <div className="foot-row">
@@ -84,8 +106,8 @@ export function Sidebar({ page, onNavigate, leads, realData, userEmail }: Sideba
           <span className="foot-val">{userEmail || "—"}</span>
         </div>
         <div className="foot-row">
-          <span className="foot-key">Fuente</span>
-          <span className="foot-val">{realData ? "CSV importado" : "Demo"}</span>
+          <span className="foot-key">{isAdmin ? "Rol" : "Acceso"}</span>
+          <span className="foot-val">{isAdmin ? "Administrador" : cuentaActual?.nombreCorto ?? "Cuenta"}</span>
         </div>
         <button className="btn sign-out-btn" onClick={handleSignOut} disabled={signingOut}>
           {signingOut ? "Cerrando…" : "Cerrar sesión"}
