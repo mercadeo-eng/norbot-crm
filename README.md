@@ -1,36 +1,91 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NORBOT Group · CRM
 
-## Getting Started
+CRM de gestión de redes sociales para **NORBOT Group**, hecho por **Istmo Marketing PA**.
+Panel general, pipeline de leads con drag & drop, embudo, pautas de Meta Ads, páginas por
+cuenta, reportes imprimibles e importación de datos por CSV con fusión por cuenta.
 
-First, run the development server:
+**Stack:** Next.js 16 (App Router, TypeScript) · Supabase (Postgres + Auth) · desplegable en Vercel.
+
+---
+
+## Requisitos
+
+- Node.js 20+ (probado con Node 24).
+- Un proyecto de Supabase con las tablas `cuentas`, `leads`, `campanas`, `metricas`, `posts`.
+
+## Variables de entorno
+
+Crea un archivo `.env.local` en la raíz (usa `.env.example` como plantilla). **No se sube al repo.**
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+NEXT_PUBLIC_SUPABASE_URL=https://TU-PROYECTO.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_...
+SUPABASE_SERVICE_ROLE_KEY=sb_secret_...
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- Las dos `NEXT_PUBLIC_*` son seguras para el navegador.
+- `SUPABASE_SERVICE_ROLE_KEY` es **secreta**: solo se usa en el servidor (Server Actions y el
+  script de seed). Nunca se incluye en el bundle del cliente.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Desarrollo
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install
+npm run dev
+```
 
-## Learn More
+Abre [http://localhost:3000](http://localhost:3000).
 
-To learn more about Next.js, take a look at the following resources:
+## Seed de datos demo
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Reescribe (limpia + inserta) las tablas con los datos demo de `lib/data.ts`. Usa la
+`service_role` key del `.env.local`. Es idempotente (puedes correrlo cuantas veces quieras).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run seed
+```
 
-## Deploy on Vercel
+> El comando es `node --env-file=.env.local --import tsx scripts/seed.ts`. La service_role key
+> se lee del `.env.local`; nunca se pasa por la línea de comandos ni se versiona.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Salida esperada:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+✓ Seed completado. Filas por tabla:
+   cuentas   3
+   leads     40
+   campanas  10
+   metricas  18
+   posts     9
+```
+
+> También puedes reescribir los datos demo desde la propia app: en cualquier página de cuenta,
+> **Importar datos → Restaurar demo**.
+
+## Autenticación
+
+Todas las rutas están protegidas (`proxy.ts`). Sin sesión, se redirige a `/login`.
+
+- Login con correo y contraseña (Supabase Auth).
+- No hay registro público: los usuarios se crean desde el **dashboard de Supabase**
+  (Authentication → Users) o con la API admin.
+- El botón **Cerrar sesión** está al pie de la barra lateral.
+
+## Despliegue en Vercel
+
+1. Conecta el repo de GitHub en Vercel.
+2. Define las tres variables de entorno (`NEXT_PUBLIC_SUPABASE_URL`,
+   `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) en el proyecto de Vercel.
+3. Deploy. (El seed se corre localmente con `npm run seed`, no en el build.)
+
+## Estructura
+
+```
+app/            Rutas (página principal, /login, Server Actions, layout)
+components/     UI (sidebar, KPIs, gráficas, modales, páginas de cada vista)
+lib/            data (semilla), csv (parsers/import), format, mappers, tipos
+lib/supabase/   clientes server/browser (@supabase/ssr) y admin (service_role)
+scripts/seed.ts Script de seed
+proxy.ts        Protección de rutas (auth)
+reference/      Artefacto original de referencia (diseño)
+```
