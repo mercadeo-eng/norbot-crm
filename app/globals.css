@@ -381,3 +381,128 @@ input, select, textarea { font-family: inherit; color: var(--ink); }
 .tab { appearance: none; border: 0; background: transparent; padding: 10px 16px; font-family: inherit; font-size: 13px; font-weight: 500; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color .15s, border-color .15s; white-space: nowrap; }
 .tab:hover { color: var(--ink); }
 .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ════════════════════════════════════════════════════════════════
+   TEMA v2 · "Modern SaaS Dashboard" — glass / neumorph light híbrido.
+   Lienzo índigo oscuro (wrapper + sidebar), paneles blancos puros,
+   acento índigo #4f46e5, éxito verde #34d399. (Overrides al final.)
+   ════════════════════════════════════════════════════════════════ */
+:root {
+  --bg: #eef1f7;
+  --bg-darker: #e3e8f1;
+  --ink: #1e293b;
+  --ink-soft: #475569;
+  --muted: #64748b;
+  --line: #e9ecf3;
+  --paper: #ffffff;
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --gold: #d97706;
+  --rust: #e11d48;
+  --success: #34d399;
+  --ok: #10b981;
+  --shadow-card: 0 1px 3px rgba(15, 23, 42, .05), 0 12px 28px -10px rgba(30, 27, 75, .18);
+  --shadow-card-hover: 0 20px 44px -14px rgba(30, 27, 75, .34);
+}
+
+/* Lienzo exterior índigo */
+html { background: #1e1b4b; }
+body {
+  color: var(--ink);
+  background:
+    radial-gradient(1100px 560px at 100% -10%, rgba(99, 102, 241, .22), transparent 60%),
+    radial-gradient(820px 480px at -10% 112%, rgba(109, 40, 217, .20), transparent 55%),
+    linear-gradient(165deg, #1e1b4b 0%, #211d57 55%, #2c2a6b 100%);
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+/* Sidebar (glass oscuro) */
+.sidebar {
+  background: linear-gradient(180deg, rgba(55, 48, 163, .45), rgba(30, 27, 75, .55));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-right: 1px solid rgba(255, 255, 255, .09);
+}
+.brand-row { border-bottom-color: rgba(255, 255, 255, .10); }
+.brand-mark { background: linear-gradient(135deg, #818cf8, #4f46e5); box-shadow: 0 8px 18px -6px rgba(79, 70, 229, .7); }
+.brand-name { color: #fff; }
+.brand-sub { color: rgba(255, 255, 255, .5); }
+.nav-btn { color: rgba(255, 255, 255, .74); border-radius: 10px; }
+.nav-btn:hover { background: rgba(255, 255, 255, .08); color: #fff; }
+.nav-btn.active { background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff; box-shadow: 0 10px 20px -8px rgba(79, 70, 229, .8); }
+.nav-section { color: rgba(255, 255, 255, .42); }
+.muted-small { color: rgba(255, 255, 255, .45); }
+.cuenta-btn { border-radius: 10px; }
+.cuenta-btn:hover { background: rgba(255, 255, 255, .08); }
+.cuenta-btn.active { background: rgba(255, 255, 255, .10); box-shadow: inset 2px 0 0 #818cf8; }
+.cuenta-name { color: #fff; }
+.cuenta-handle { color: rgba(255, 255, 255, .5); }
+.cuenta-count { color: rgba(255, 255, 255, .78); background: rgba(255, 255, 255, .12); }
+.sidebar-foot { border-top-color: rgba(255, 255, 255, .10); }
+.foot-key { color: rgba(255, 255, 255, .45); }
+.foot-val { color: rgba(255, 255, 255, .82); }
+.sign-out-btn { background: rgba(255, 255, 255, .08); color: #fff; border-color: rgba(255, 255, 255, .16); }
+.sign-out-btn:hover { background: rgba(255, 255, 255, .16); }
+
+/* Cabecera + stats sobre el lienzo oscuro */
+.page-header { border-bottom-color: rgba(255, 255, 255, .13); }
+.hl .eyebrow { color: rgba(255, 255, 255, .62); }
+.hl h1 { color: #fff; }
+.hl h1 em { color: #a5b4fc; }
+.hl .sub { color: rgba(255, 255, 255, .64); }
+.sync-badge { background: rgba(255, 255, 255, .11); color: rgba(255, 255, 255, .86); }
+.sync-dot { background: var(--success); }
+.sync-dot.local { background: #fbbf24; }
+.stat { border-right-color: rgba(255, 255, 255, .17); }
+.stat-num { color: #fff; }
+.stat-num .pct { color: rgba(255, 255, 255, .55); }
+.stat-label { color: rgba(255, 255, 255, .55); }
+
+/* Pestañas */
+.tabbar { border-bottom-color: rgba(255, 255, 255, .15); gap: 4px; }
+.tab { color: rgba(255, 255, 255, .62); border-radius: 10px 10px 0 0; }
+.tab:hover { color: #fff; background: rgba(255, 255, 255, .06); }
+.tab.active { color: #fff; border-bottom-color: #818cf8; background: rgba(255, 255, 255, .05); }
+
+/* Texto suelto sobre el lienzo */
+.toolbar-hint { color: rgba(255, 255, 255, .62); }
+
+/* Paneles blancos (neumorph) */
+.card, .cuenta-card, .cuenta-hero, .slide, .login-card { border-radius: 16px; }
+.col { border-radius: 14px; }
+.kpi-big { border-top: 0; border-radius: 16px; position: relative; overflow: hidden; }
+.kpi-big::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(180deg, #818cf8, #4f46e5); }
+
+/* Botones e inputs redondeados */
+.btn { border-radius: 10px; }
+.btn-primary { background: linear-gradient(135deg, #6366f1, #4f46e5); border-color: transparent; box-shadow: 0 10px 20px -10px rgba(79, 70, 229, .9); }
+.btn-primary:hover { background: linear-gradient(135deg, #4f46e5, #4338ca); }
+.btn-danger { color: var(--rust); border-color: rgba(225, 29, 72, .3); }
+.btn-danger:hover { background: rgba(225, 29, 72, .08); }
+.search input, .select, .fld input, .fld select, .fld textarea, .drop-zone { border-radius: 10px; }
+.login-card { border-radius: 18px; }
+.modal { border-radius: 18px; }
+
+/* Píldoras de estado (texto corto, sin íconos) */
+.badge { font-family: 'DM Sans', system-ui, sans-serif; text-transform: none; letter-spacing: 0; font-weight: 600; font-size: 11px; padding: 3px 10px; border-radius: 999px; }
+.badge-activa { background: #eef2ff; color: #4f46e5; }
+.badge-pausada { background: #fff7ed; color: #c2410c; }
+.badge-finalizada { background: #f1f5f9; color: #64748b; }
+.lead-status { display: inline-block; font-family: 'DM Sans', system-ui, sans-serif; font-size: 10px; font-weight: 600; padding: 2px 9px; border-radius: 999px; margin-top: 7px; }
+
+/* Verde para positivo / éxito */
+.pos, .delta.pos, .trend-delta.pos { color: var(--ok); }
+.leak-bar.leak-ok { background: var(--success); }
+
+/* Acentos internos (callouts, imports) */
+.exec-note, .funnel-foot, .import-note { border-left-color: var(--accent); background: #eef2ff; }
+.import-active { background: #eef2ff; }
+.import-note strong, .import-active strong, .import-summary .ok, .link-btn, .lead-campana, .drop-icon { color: var(--accent); }
+.drop-zone:hover, .drop-zone.drag-over { background: #eef2ff; border-color: var(--accent); }
+.leak-row.leak-max { background: #fff1f2; border-color: var(--rust); }
+.login-error { color: var(--rust); background: #fff1f2; border-color: #fecdd3; }
+
+/* Toast / overlay */
+.toast { background: #1e1b4b; box-shadow: 0 16px 40px -10px rgba(30, 27, 75, .6); }
+.modal-back { background: rgba(15, 23, 42, .55); }
