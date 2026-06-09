@@ -137,7 +137,7 @@ export default function NorbotCRM({
       ["nuevo", "visita_agendada", "visita_realizada"].includes(l.etapa),
     ).length;
     const visitas = leads.filter((l) => ["visita_agendada", "visita_realizada"].includes(l.etapa)).length;
-    const cerrados = leads.filter((l) => l.etapa === "reservado").length;
+    const cerrados = leads.filter((l) => ["reservado", "vendido"].includes(l.etapa)).length;
     const conv = total > 0 ? (cerrados / total) * 100 : 0;
     return { total, enProceso, visitas, cerrados, conv };
   }, [leads]);
@@ -357,7 +357,7 @@ export default function NorbotCRM({
               <Stat label="Leads totales" value={headerStats.total} />
               <Stat label="En proceso" value={headerStats.enProceso} />
               <Stat label="Visitas" value={headerStats.visitas} />
-              <Stat label="Reservados" value={headerStats.cerrados} />
+              <Stat label="Cerrados" value={headerStats.cerrados} />
               <Stat
                 label="Conversión"
                 value={

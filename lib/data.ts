@@ -8,10 +8,11 @@ export const CUENTAS: Cuenta[] = [
 export const CUENTA_BY_KEY: Record<string, Cuenta> = Object.fromEntries(CUENTAS.map((c) => [c.key, c]));
 
 export const ETAPAS: Etapa[] = [
-  { key: "nuevo",            title: "Lead nuevo",          sub: "01 · Captación y contacto", color: "#5b7a6b" },
-  { key: "visita_agendada",  title: "Visita agendada",     sub: "02 · Recorrido pactado",    color: "#8a6a9c" },
-  { key: "visita_realizada", title: "Visita realizada",    sub: "03 · Post-recorrido",       color: "#b87355" },
-  { key: "reservado",        title: "Reservado · Vendido", sub: "04 · Conversión",           color: "#2d5d4f" },
+  { key: "nuevo",            title: "Lead nuevo",      sub: "01 · Captación y contacto", color: "#5b7a6b" },
+  { key: "visita_agendada",  title: "Visita agendada", sub: "02 · Recorrido pactado",    color: "#8a6a9c" },
+  { key: "visita_realizada", title: "Visita realizada",sub: "03 · Post-recorrido",       color: "#b87355" },
+  { key: "reservado",        title: "Reservado",       sub: "04 · Reserva",              color: "#2d5d4f" },
+  { key: "vendido",          title: "Vendido",         sub: "05 · Cierre",               color: "#10b981" },
 ];
 export const ETAPA_BY_KEY: Record<string, Etapa> = Object.fromEntries(ETAPAS.map((e) => [e.key, e]));
 
@@ -25,12 +26,11 @@ export function normalizeEtapa(etapa: string | null | undefined): string {
     case "info_enviada":
     case "llamar_whatsapp":
       return "nuevo";
-    case "vendido":
-      return "reservado"; // combinado por ahora (Reservado · Vendido)
     case "nuevo":
     case "visita_agendada":
     case "visita_realizada":
     case "reservado":
+    case "vendido":
       return etapa;
     default:
       return "nuevo";

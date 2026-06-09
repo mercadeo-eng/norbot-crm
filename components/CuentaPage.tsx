@@ -43,7 +43,7 @@ export function CuentaPage({
   const seriesLeads = meses.map((mes) => m.find((x) => x.mes === mes)?.leads || 0);
   const porEtapa = ETAPAS.map((e) => ({ ...e, count: lc.filter((l) => l.etapa === e.key).length }));
   const totalLeads = lc.length;
-  const reservados = lc.filter((l) => l.etapa === "reservado").length;
+  const reservados = lc.filter((l) => ["reservado", "vendido"].includes(l.etapa)).length;
   const inversionAcum = cc.reduce((a, x) => a + x.gasto, 0);
   const postsCuenta = posts[cuentaKey] || [];
   const af = mAct?.followers || 0;

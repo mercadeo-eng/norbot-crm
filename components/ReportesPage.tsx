@@ -273,8 +273,12 @@ export function ReportesPage({
             })}
           </div>
           <div className="funnel-foot">
-            <strong>Tasa de conversión IG → reserva:</strong>{" "}
-            {fmtPct((lc.filter((l) => l.etapa === "reservado").length / Math.max(1, lc.length)) * 100, 1)} ·{" "}
+            <strong>Tasa de conversión IG → cierre:</strong>{" "}
+            {fmtPct(
+              (lc.filter((l) => ["reservado", "vendido"].includes(l.etapa)).length / Math.max(1, lc.length)) * 100,
+              1,
+            )}{" "}
+            ·{" "}
             <strong>Visitas agendadas:</strong> {lc.filter((l) => l.etapa === "visita_agendada").length} ·{" "}
             <strong>Visitas realizadas:</strong> {lc.filter((l) => l.etapa === "visita_realizada").length}
           </div>

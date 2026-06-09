@@ -55,7 +55,7 @@ export function EmbudoPage({ leads, lockedCuenta }: { leads: Lead[]; lockedCuent
     return { ...e, value: v };
   });
   const maxV = cum[0].value || 1;
-  const convertidos = countByKey["reservado"];
+  const convertidos = (countByKey["reservado"] || 0) + (countByKey["vendido"] || 0);
   const tasaConv = total > 0 ? (convertidos / total) * 100 : 0;
   const steps: Step[] = [];
   for (let i = 0; i < cum.length - 1; i++) {
@@ -92,7 +92,7 @@ export function EmbudoPage({ leads, lockedCuenta }: { leads: Lead[]; lockedCuent
       <section className="kpi-grid">
         <KpiBig label="Leads en el embudo" value={fmtNum(total)} accent="#5b7a6b" />
         <KpiBig
-          label="Convertidos · reservados"
+          label="Convertidos · cerrados"
           value={fmtNum(convertidos)}
           sub={`${tasaConv.toFixed(1)}% del total`}
           accent="#2d5d4f"

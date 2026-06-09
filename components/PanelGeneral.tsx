@@ -56,7 +56,7 @@ export function PanelGeneral({ metricas, leads, campanas, meses, onOpenCuenta, l
       followersDelta: (cm?.followers || 0) - (cmPrev?.followers || 0),
       inversion: cmInv,
       leads: lc.length,
-      reservados: lc.filter((l) => l.etapa === "reservado").length,
+      reservados: lc.filter((l) => ["reservado", "vendido"].includes(l.etapa)).length,
       cpl: cmLeads > 0 ? cmInv / cmLeads : 0,
       engagement: cm?.engagement || 0,
       campanasActivas: ccs.filter((cc) => cc.estado === "activa").length,
@@ -118,7 +118,7 @@ export function PanelGeneral({ metricas, leads, campanas, meses, onOpenCuenta, l
               <div className="cuenta-card-grid">
                 <Mini label="Alcance" value={fmtNum(c.reach)} />
                 <Mini label="Leads" value={fmtNum(c.leads)} />
-                <Mini label="Reservados" value={fmtNum(c.reservados)} />
+                <Mini label="Cerrados" value={fmtNum(c.reservados)} />
                 <Mini label="CPL" value={fmtMoney(c.cpl)} />
                 <Mini label="Engagement" value={fmtPct(c.engagement, 1)} />
                 <Mini label="Inversión" value={fmtMoney(c.inversion)} />

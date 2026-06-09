@@ -97,11 +97,13 @@ export function resolveEtapa(val: unknown): string {
   for (const e of ETAPAS) if (norm(e.key) === v || norm(e.title) === v) return e.key;
   for (const e of ETAPAS) if (norm(e.title).includes(v) || v.includes(norm(e.key))) return e.key;
   const syn: Record<string, string> = {
-    vendido: "reservado", cerrado: "reservado", reserva: "reservado", reservada: "reservado",
-    ganado: "reservado", lead: "nuevo", inicial: "nuevo", primercontacto: "contactado",
-    llamar: "contactado", llamada: "contactado", whatsapp: "contactado", wsp: "contactado",
-    brochure: "info_enviada", info: "info_enviada", agendada: "visita_agendada",
-    agendado: "visita_agendada", visito: "visita_realizada", visitado: "visita_realizada",
+    reserva: "reservado", reservada: "reservado",
+    cerrado: "vendido", ganado: "vendido", venta: "vendido",
+    lead: "nuevo", inicial: "nuevo", primercontacto: "nuevo",
+    llamar: "nuevo", llamada: "nuevo", whatsapp: "nuevo", wsp: "nuevo",
+    contactado: "nuevo", brochure: "nuevo", info: "nuevo", infoenviada: "nuevo",
+    agendada: "visita_agendada", agendado: "visita_agendada",
+    visito: "visita_realizada", visitado: "visita_realizada",
   };
   return syn[v] || "nuevo";
 }
