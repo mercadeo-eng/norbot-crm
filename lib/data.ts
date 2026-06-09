@@ -8,16 +8,36 @@ export const CUENTAS: Cuenta[] = [
 export const CUENTA_BY_KEY: Record<string, Cuenta> = Object.fromEntries(CUENTAS.map((c) => [c.key, c]));
 
 export const ETAPAS: Etapa[] = [
-  { key: "nuevo",            title: "Lead nuevo",          sub: "01 · Entrada IG",         color: "#5b7a6b" },
-  { key: "contactado",       title: "Contactado",          sub: "02 · Primer mensaje",     color: "#c89b5e" },
-  { key: "info_enviada",     title: "Info enviada",        sub: "03 · Brochure y precios", color: "#4a7a8c" },
-  { key: "visita_agendada",  title: "Visita agendada",     sub: "04 · Recorrido pactado",  color: "#8a6a9c" },
-  { key: "visita_realizada", title: "Visita realizada",    sub: "05 · Post-recorrido",     color: "#b87355" },
-  { key: "reservado",        title: "Reservado · Vendido", sub: "06 · Conversión",         color: "#2d5d4f" },
+  { key: "nuevo",            title: "Lead nuevo",          sub: "01 · Captación y contacto", color: "#5b7a6b" },
+  { key: "visita_agendada",  title: "Visita agendada",     sub: "02 · Recorrido pactado",    color: "#8a6a9c" },
+  { key: "visita_realizada", title: "Visita realizada",    sub: "03 · Post-recorrido",       color: "#b87355" },
+  { key: "reservado",        title: "Reservado · Vendido", sub: "04 · Conversión",           color: "#2d5d4f" },
 ];
 export const ETAPA_BY_KEY: Record<string, Etapa> = Object.fromEntries(ETAPAS.map((e) => [e.key, e]));
 
-export const ORIGENES = ["Pauta IG", "Orgánico IG", "DM Directo", "Story", "Referido"];
+/**
+ * Mapea cualquier valor de etapa (incluidos los legados) a una de las etapas
+ * vigentes del pipeline. "Lead nuevo" unifica las antiguas nuevo/contactado/info_enviada.
+ */
+export function normalizeEtapa(etapa: string | null | undefined): string {
+  switch (etapa) {
+    case "contactado":
+    case "info_enviada":
+    case "llamar_whatsapp":
+      return "nuevo";
+    case "vendido":
+      return "reservado"; // combinado por ahora (Reservado · Vendido)
+    case "nuevo":
+    case "visita_agendada":
+    case "visita_realizada":
+    case "reservado":
+      return etapa;
+    default:
+      return "nuevo";
+  }
+}
+
+export const ORIGENES = ["Pauta IG", "Orgánico IG", "DM Directo", "Story", "Referido", "Brokers", "Hotel"];
 export const PRESUPUESTOS = ["$120-180k", "$180-250k", "$250-350k", "$350k+"];
 
 export const MOCK_LEADS: Lead[] = [

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { ETAPA_BY_KEY } from "./data";
+import { normalizeEtapa } from "./data";
 import type { Campana, Cuenta, Lead, Metrica, Post, PostsByCuenta } from "./types";
 
 /* ─────────── filas de la BD → modelos de la app (snake → camel) ─────────── */
@@ -16,7 +16,7 @@ export function rowToLead(r: AnyRow): Lead {
     cuenta: str(r.cuenta),
     origen: str(r.origen),
     campana: str(r.campana),
-    etapa: str(r.etapa),
+    etapa: normalizeEtapa(str(r.etapa)),
     fechaIngreso: str(r.fecha_ingreso),
     presupuesto: str(r.presupuesto),
     notas: str(r.notas),
@@ -67,7 +67,7 @@ export function rowToPost(r: AnyRow): Post {
 }
 
 /* ─────────── modelos de la app → filas para insertar (camel → snake) ─────────── */
-const clampEtapa = (etapa: string) => (ETAPA_BY_KEY[etapa] ? etapa : "contactado");
+const clampEtapa = (etapa: string) => normalizeEtapa(etapa);
 
 export function leadToInsert(l: Omit<Lead, "id">) {
   return {

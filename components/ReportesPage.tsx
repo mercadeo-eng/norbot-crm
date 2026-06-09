@@ -284,8 +284,8 @@ export function ReportesPage({
           <h3 className="slide-h3">Plan para el próximo mes</h3>
           <ul className="acciones">
             <li>
-              <strong>Retomar contacto</strong> con {lc.filter((l) => l.etapa === "contactado").length} leads en estado
-              &quot;Contactado&quot; sin avance.
+              <strong>Retomar contacto</strong> con {lc.filter((l) => l.etapa === "nuevo").length} leads
+              &quot;Lead nuevo&quot; sin avance.
             </li>
             <li>
               <strong>Confirmar visitas agendadas</strong> ({lc.filter((l) => l.etapa === "visita_agendada").length})

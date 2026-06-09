@@ -134,7 +134,7 @@ export default function NorbotCRM({
   const headerStats = useMemo(() => {
     const total = leads.length;
     const enProceso = leads.filter((l) =>
-      ["contactado", "llamar_whatsapp", "info_enviada", "visita_agendada"].includes(l.etapa),
+      ["nuevo", "visita_agendada", "visita_realizada"].includes(l.etapa),
     ).length;
     const visitas = leads.filter((l) => ["visita_agendada", "visita_realizada"].includes(l.etapa)).length;
     const cerrados = leads.filter((l) => l.etapa === "reservado").length;
