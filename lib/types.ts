@@ -101,3 +101,9 @@ export interface ImportFlags {
   metricas: boolean;
   posts: boolean;
 }
+
+export interface VendedorInfo {
+  id: string;
+  email: string;
+  cuentas: string[];
+}

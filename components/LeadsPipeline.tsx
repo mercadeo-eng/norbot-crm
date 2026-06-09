@@ -1,9 +1,9 @@
 "use client";
 
 import type { DragEvent } from "react";
-import { CUENTAS, CUENTA_BY_KEY, ETAPAS } from "@/lib/data";
+import { CUENTA_BY_KEY, ETAPAS } from "@/lib/data";
 import { compactDate } from "@/lib/format";
-import type { Lead } from "@/lib/types";
+import type { Cuenta, Lead } from "@/lib/types";
 import { ScrollX } from "./charts";
 
 interface LeadsPipelineProps {
@@ -18,7 +18,7 @@ interface LeadsPipelineProps {
   onDragLeave: (e: DragEvent) => void;
   onOpenLead: (id: string) => void;
   onNewLead: () => void;
-  lockedCuenta?: string | null;
+  cuentaOptions: Cuenta[];
 }
 
 export function LeadsPipeline({
@@ -33,7 +33,7 @@ export function LeadsPipeline({
   onDragLeave,
   onOpenLead,
   onNewLead,
-  lockedCuenta,
+  cuentaOptions,
 }: LeadsPipelineProps) {
   return (
     <div className="page">
@@ -46,10 +46,10 @@ export function LeadsPipeline({
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        {!lockedCuenta && (
+        {cuentaOptions.length > 1 && (
           <select className="select" value={filtroCuenta} onChange={(e) => setFiltroCuenta(e.target.value)}>
             <option value="todas">Todas las cuentas</option>
-            {CUENTAS.map((c) => (
+            {cuentaOptions.map((c) => (
               <option key={c.key} value={c.key}>
                 {c.nombreCorto}
               </option>

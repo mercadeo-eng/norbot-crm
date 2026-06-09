@@ -162,21 +162,33 @@ export interface CrmData {
   posts: PostsByCuenta;
 }
 
+export interface FetchScope {
+  /** Si se define, solo lee leads de este vendedor (dueño). */
+  vendedor?: string | null;
+  /** Si se define, limita campañas/métricas/posts a estas cuentas. */
+  cuentas?: string[] | null;
+}
+
 /**
- * Lee todas las tablas transaccionales y arma el estado del CRM.
- * Si se pasa `cuenta`, restringe la lectura a esa cuenta (usuarios limitados).
+ * Lee todas las tablas transaccionales y arma el estado del CRM, opcionalmente
+ * restringido por vendedor (leads propios) y/o por cuentas (datos de IG).
  */
-export async function fetchData(supabase: SupabaseClient, cuenta?: string | null): Promise<CrmData> {
-  const q = (table: string, orderCol: string, asc: boolean) => {
-    const sel = supabase.from(table).select("*");
-    const filtered = cuenta ? sel.eq("cuenta", cuenta) : sel;
-    return filtered.order(orderCol, { ascending: asc });
+export async function fetchData(supabase: SupabaseClient, scope: FetchScope = {}): Promise<CrmData> {
+  const { vendedor, cuentas } = scope;
+  // Datos por cuenta: limitados a las cuentas permitidas (si se definen).
+  const acct = (table: string, orderCol: string, asc: boolean) => {
+    let b = supabase.from(table).select("*");
+    if (cuentas) b = b.in("cuenta", cuentas.length ? cuentas : ["__none__"]);
+    return b.order(orderCol, { ascending: asc });
   };
+  // Leads: limitados al vendedor dueño (si se define).
+  let leadsB = supabase.from("leads").select("*");
+  if (vendedor) leadsB = leadsB.eq("vendedor", vendedor);
   const [leadsR, campR, metR, postR] = await Promise.all([
-    q("leads", "fecha_ingreso", true),
-    q("campanas", "inicio", true),
-    q("metricas", "mes", true),
-    q("posts", "fecha", false),
+    leadsB.order("fecha_ingreso", { ascending: true }),
+    acct("campanas", "inicio", true),
+    acct("metricas", "mes", true),
+    acct("posts", "fecha", false),
   ]);
   const leads = (leadsR.data ?? []).map(rowToLead);
   const campanas = (campR.data ?? []).map(rowToCampana);

@@ -1,7 +1,7 @@
 import NorbotCRM from "@/components/NorbotCRM";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { fetchData } from "@/lib/mappers";
-import { allowedCuentaFor, getSessionInfo } from "@/lib/auth";
+import { fetchData, type FetchScope } from "@/lib/mappers";
+import { getSessionInfo } from "@/lib/auth";
 
 // Los datos cambian con cada import/edición: nunca cachear estáticamente.
 export const dynamic = "force-dynamic";
@@ -9,12 +9,12 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   // La ruta está protegida por el proxy; getSessionInfo deriva el rol del usuario.
   const session = await getSessionInfo();
-  const allowed = session ? allowedCuentaFor(session) : "__none__";
+  const scope: FetchScope =
+    session?.role === "vendedor" ? { vendedor: session.userId, cuentas: session.cuentas } : {};
 
-  // Lectura server-side con service_role, restringida a la cuenta del usuario si
-  // es limitado (RLS bloquea el acceso anónimo). Nunca llega al cliente.
+  // Lectura server-side con la service_role key (RLS bloquea el acceso anónimo).
   const supabase = createSupabaseAdminClient();
-  const { leads, campanas, metricas, posts } = await fetchData(supabase, allowed);
+  const { leads, campanas, metricas, posts } = await fetchData(supabase, scope);
 
   return (
     <NorbotCRM
@@ -24,7 +24,8 @@ export default async function Home() {
       initialPosts={posts}
       userEmail={session?.email ?? ""}
       role={session?.role ?? "admin"}
-      allowedCuenta={session?.role === "cuenta" ? session.cuenta : null}
+      cuentas={session?.cuentas ?? []}
+      vendedorId={session?.userId ?? ""}
     />
   );
 }

@@ -20,7 +20,7 @@ import {
   rowToLead,
   type CrmData,
 } from "@/lib/mappers";
-import type { Campana, ImportTipo, Lead, Metrica, PostsByCuenta } from "@/lib/types";
+import type { Campana, ImportTipo, Lead, Metrica, PostsByCuenta, VendedorInfo } from "@/lib/types";
 
 type Result<T> = { data: T | null; error: { message: string } | null };
 function check<T>(res: Result<T>, ctx: string): T {
@@ -42,14 +42,14 @@ function requireAdmin(info: SessionInfo) {
 export async function addLeadAction(data: Omit<Lead, "id" | "etapa" | "fechaIngreso">): Promise<Lead> {
   const session = await requireUser();
   const admin = createSupabaseAdminClient();
-  // Un usuario limitado solo puede crear leads en SU cuenta.
-  const cuenta = session.role === "cuenta" ? session.cuenta ?? data.cuenta : data.cuenta;
-  const row = leadToInsert({
-    ...data,
-    cuenta,
-    etapa: "nuevo",
-    fechaIngreso: new Date().toISOString().slice(0, 10),
-  });
+  // Un vendedor solo crea en SUS cuentas y el lead queda a su nombre (dueño).
+  const esVendedor = session.role === "vendedor";
+  const cuenta =
+    esVendedor && !session.cuentas.includes(data.cuenta) ? session.cuentas[0] ?? data.cuenta : data.cuenta;
+  const row = {
+    ...leadToInsert({ ...data, cuenta, etapa: "nuevo", fechaIngreso: new Date().toISOString().slice(0, 10) }),
+    vendedor: esVendedor ? session.userId : null,
+  };
   const res = await admin.from("leads").insert(row).select().single();
   return rowToLead(check(res, "addLead"));
 }
@@ -58,7 +58,7 @@ export async function moveLeadAction(id: string, etapa: string): Promise<void> {
   const session = await requireUser();
   const admin = createSupabaseAdminClient();
   let q = admin.from("leads").update(leadPatchToRow({ etapa })).eq("id", id);
-  if (session.role === "cuenta") q = q.eq("cuenta", session.cuenta ?? "__none__");
+  if (session.role === "vendedor") q = q.eq("vendedor", session.userId);
   check(await q, "moveLead");
 }
 
@@ -66,7 +66,7 @@ export async function updateLeadAction(id: string, patch: Partial<Lead>): Promis
   const session = await requireUser();
   const admin = createSupabaseAdminClient();
   let q = admin.from("leads").update(leadPatchToRow(patch)).eq("id", id);
-  if (session.role === "cuenta") q = q.eq("cuenta", session.cuenta ?? "__none__");
+  if (session.role === "vendedor") q = q.eq("vendedor", session.userId);
   check(await q, "updateLead");
 }
 
@@ -74,7 +74,7 @@ export async function deleteLeadAction(id: string): Promise<void> {
   const session = await requireUser();
   const admin = createSupabaseAdminClient();
   let q = admin.from("leads").delete().eq("id", id);
-  if (session.role === "cuenta") q = q.eq("cuenta", session.cuenta ?? "__none__");
+  if (session.role === "vendedor") q = q.eq("vendedor", session.userId);
   check(await q, "deleteLead");
 }
 
@@ -137,4 +137,45 @@ export async function restoreDemoAction(): Promise<CrmData> {
   check(await admin.from("posts").insert(postRows), "restore posts(ins)");
 
   return fetchData(admin);
+}
+
+/* ─────────────────── gestión de vendedores (solo admin) ─────────────────── */
+export async function listVendedoresAction(): Promise<VendedorInfo[]> {
+  requireAdmin(await requireUser());
+  const admin = createSupabaseAdminClient();
+  const { data, error } = await admin.auth.admin.listUsers({ perPage: 1000 });
+  if (error) throw new Error("listVendedores: " + error.message);
+  return data.users
+    .filter((u) => (u.app_metadata as { role?: string })?.role === "vendedor")
+    .map((u) => ({
+      id: u.id,
+      email: u.email ?? "",
+      cuentas: (u.app_metadata as { cuentas?: string[] })?.cuentas ?? [],
+    }));
+}
+
+export async function createVendedorAction(email: string, password: string, cuentas: string[]): Promise<void> {
+  requireAdmin(await requireUser());
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.auth.admin.createUser({
+    email: email.trim().toLowerCase(),
+    password,
+    email_confirm: true,
+    app_metadata: { role: "vendedor", cuentas },
+  });
+  if (error) throw new Error("createVendedor: " + error.message);
+}
+
+export async function updateVendedorCuentasAction(id: string, cuentas: string[]): Promise<void> {
+  requireAdmin(await requireUser());
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.auth.admin.updateUserById(id, { app_metadata: { role: "vendedor", cuentas } });
+  if (error) throw new Error("updateVendedor: " + error.message);
+}
+
+export async function deleteVendedorAction(id: string): Promise<void> {
+  requireAdmin(await requireUser());
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.auth.admin.deleteUser(id);
+  if (error) throw new Error("deleteVendedor: " + error.message);
 }

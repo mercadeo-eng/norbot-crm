@@ -1,8 +1,8 @@
 "use client";
 
-import { CUENTAS, CUENTA_BY_KEY } from "@/lib/data";
+import { CUENTA_BY_KEY } from "@/lib/data";
 import { compactDate, fmtMoney, fmtNum } from "@/lib/format";
-import type { Campana } from "@/lib/types";
+import type { Campana, Cuenta } from "@/lib/types";
 import { KpiBig } from "./KpiBig";
 import { BarRow, ScrollX } from "./charts";
 
@@ -10,10 +10,10 @@ interface PautasPageProps {
   campanas: Campana[];
   filtroCuenta: string;
   setFiltroCuenta: (v: string) => void;
-  lockedCuenta?: string | null;
+  cuentaOptions: Cuenta[];
 }
 
-export function PautasPage({ campanas, filtroCuenta, setFiltroCuenta, lockedCuenta }: PautasPageProps) {
+export function PautasPage({ campanas, filtroCuenta, setFiltroCuenta, cuentaOptions }: PautasPageProps) {
   const filtradas = filtroCuenta === "todas" ? campanas : campanas.filter((c) => c.cuenta === filtroCuenta);
   const totGasto = filtradas.reduce((a, c) => a + c.gasto, 0);
   const totLeads = filtradas.reduce((a, c) => a + c.leads, 0);
@@ -24,15 +24,15 @@ export function PautasPage({ campanas, filtroCuenta, setFiltroCuenta, lockedCuen
   const ctr = totReach > 0 ? (totClicks / totReach) * 100 : 0;
   const maxGasto = Math.max(
     1,
-    ...CUENTAS.map((c) => campanas.filter((x) => x.cuenta === c.key).reduce((a, x) => a + x.gasto, 0)),
+    ...cuentaOptions.map((c) => campanas.filter((x) => x.cuenta === c.key).reduce((a, x) => a + x.gasto, 0)),
   );
   return (
     <div className="page">
       <div className="toolbar">
-        {!lockedCuenta && (
+        {cuentaOptions.length > 1 && (
           <select className="select" value={filtroCuenta} onChange={(e) => setFiltroCuenta(e.target.value)}>
             <option value="todas">Todas las cuentas</option>
-            {CUENTAS.map((c) => (
+            {cuentaOptions.map((c) => (
               <option key={c.key} value={c.key}>
                 {c.nombreCorto}
               </option>
@@ -57,7 +57,7 @@ export function PautasPage({ campanas, filtroCuenta, setFiltroCuenta, lockedCuen
           </div>
         </header>
         <div className="bars">
-          {CUENTAS.map((c) => {
+          {cuentaOptions.map((c) => {
             const gasto = campanas.filter((x) => x.cuenta === c.key).reduce((a, x) => a + x.gasto, 0);
             return <BarRow key={c.key} label={c.nombreCorto} value={gasto} max={maxGasto} color={c.brand} suffix={` USD`} />;
           })}

@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { CUENTAS, CUENTA_BY_KEY, ETAPAS } from "@/lib/data";
+import { CUENTA_BY_KEY, ETAPAS } from "@/lib/data";
 import { compactDate, fmtMoney, fmtNum, fmtPct, longDate, mesLabel, prevMes } from "@/lib/format";
-import type { Campana, Lead, Metrica, PostsByCuenta } from "@/lib/types";
+import type { Campana, Cuenta, Lead, Metrica, PostsByCuenta } from "@/lib/types";
 import { exportLeadsToExcel } from "@/lib/excel";
 import { ExecKpi } from "./charts";
 
@@ -17,7 +17,7 @@ interface ReportesPageProps {
   campanas: Campana[];
   posts: PostsByCuenta;
   meses: string[];
-  lockedCuenta?: string | null;
+  cuentaOptions: Cuenta[];
 }
 
 export function ReportesPage({
@@ -30,7 +30,7 @@ export function ReportesPage({
   campanas,
   posts,
   meses,
-  lockedCuenta,
+  cuentaOptions,
 }: ReportesPageProps) {
   const [fuente, setFuente] = useState("todas");
   const [desde, setDesde] = useState("");
@@ -58,9 +58,9 @@ export function ReportesPage({
   return (
     <div className="page">
       <div className="toolbar">
-        {!lockedCuenta && (
+        {cuentaOptions.length > 1 && (
           <select className="select" value={cuenta} onChange={(e) => setCuenta(e.target.value)}>
-            {CUENTAS.map((cu) => (
+            {cuentaOptions.map((cu) => (
               <option key={cu.key} value={cu.key}>
                 {cu.nombreCorto}
               </option>

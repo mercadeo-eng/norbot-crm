@@ -1,10 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CUENTAS, CUENTA_BY_KEY } from "@/lib/data";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import type { Lead } from "@/lib/types";
+import type { Cuenta, Lead } from "@/lib/types";
 
 const PANEL_PAGES = ["dashboard", "leads", "embudo", "pautas", "reportes"];
 
@@ -15,19 +14,14 @@ interface SidebarProps {
   realData: boolean;
   userEmail: string;
   isAdmin: boolean;
-  lockedCuenta: string | null;
+  /** Cuentas a mostrar: admin = todas (con drill); vendedor = las suyas (estáticas). */
+  cuentaOptions: Cuenta[];
 }
 
-export function Sidebar({ page, onNavigate, leads, realData, userEmail, isAdmin, lockedCuenta }: SidebarProps) {
+export function Sidebar({ page, onNavigate, leads, realData, userEmail, isAdmin, cuentaOptions }: SidebarProps) {
+  void realData;
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
-  const leadsPorCuenta = useMemo(() => {
-    const map: Record<string, number> = {};
-    CUENTAS.forEach((c) => {
-      map[c.key] = leads.filter((l) => l.cuenta === c.key).length;
-    });
-    return map;
-  }, [leads]);
 
   async function handleSignOut() {
     setSigningOut(true);
@@ -36,8 +30,6 @@ export function Sidebar({ page, onNavigate, leads, realData, userEmail, isAdmin,
     router.replace("/login");
     router.refresh();
   }
-
-  const cuentaActual = lockedCuenta ? CUENTA_BY_KEY[lockedCuenta] : null;
 
   return (
     <aside className="sidebar">
@@ -57,44 +49,50 @@ export function Sidebar({ page, onNavigate, leads, realData, userEmail, isAdmin,
           <span>Panel general</span>
         </button>
         {isAdmin && (
-          <>
-            <div className="nav-section">
-              <span>Cuentas Instagram</span>
-              <span className="muted-small">{CUENTAS.length}</span>
-            </div>
-            {CUENTAS.map((c) => {
-              const active = page === `cuenta:${c.key}`;
-              return (
-                <button
-                  key={c.key}
-                  onClick={() => onNavigate(`cuenta:${c.key}`)}
-                  className={`cuenta-btn ${active ? "active" : ""}`}
-                >
-                  <span className="cuenta-dot" style={{ background: c.brand }} />
-                  <div className="cuenta-text">
-                    <div className="cuenta-name">{c.nombreCorto}</div>
-                    <div className="cuenta-handle">{c.handle}</div>
-                  </div>
-                  <span className="cuenta-count">{leadsPorCuenta[c.key]}</span>
-                </button>
-              );
-            })}
-          </>
+          <button
+            onClick={() => onNavigate("vendedores")}
+            className={`nav-btn ${page === "vendedores" ? "active" : ""}`}
+          >
+            <span className="nav-icon">◑</span>
+            <span>Vendedores</span>
+          </button>
         )}
-        {!isAdmin && cuentaActual && (
-          <>
-            <div className="nav-section">
-              <span>Cuenta</span>
-            </div>
-            <div className="cuenta-btn" style={{ cursor: "default" }}>
-              <span className="cuenta-dot" style={{ background: cuentaActual.brand }} />
+
+        {cuentaOptions.length > 0 && (
+          <div className="nav-section">
+            <span>{isAdmin ? "Cuentas Instagram" : "Tus cuentas"}</span>
+            <span className="muted-small">{cuentaOptions.length}</span>
+          </div>
+        )}
+        {cuentaOptions.map((c) => {
+          if (isAdmin) {
+            const active = page === `cuenta:${c.key}`;
+            const count = leads.filter((l) => l.cuenta === c.key).length;
+            return (
+              <button
+                key={c.key}
+                onClick={() => onNavigate(`cuenta:${c.key}`)}
+                className={`cuenta-btn ${active ? "active" : ""}`}
+              >
+                <span className="cuenta-dot" style={{ background: c.brand }} />
+                <div className="cuenta-text">
+                  <div className="cuenta-name">{c.nombreCorto}</div>
+                  <div className="cuenta-handle">{c.handle}</div>
+                </div>
+                <span className="cuenta-count">{count}</span>
+              </button>
+            );
+          }
+          return (
+            <div key={c.key} className="cuenta-btn" style={{ cursor: "default" }}>
+              <span className="cuenta-dot" style={{ background: c.brand }} />
               <div className="cuenta-text">
-                <div className="cuenta-name">{cuentaActual.nombreCorto}</div>
-                <div className="cuenta-handle">{cuentaActual.handle}</div>
+                <div className="cuenta-name">{c.nombreCorto}</div>
+                <div className="cuenta-handle">{c.handle}</div>
               </div>
             </div>
-          </>
-        )}
+          );
+        })}
       </nav>
       <div className="sidebar-foot">
         <div className="foot-row">
@@ -102,8 +100,8 @@ export function Sidebar({ page, onNavigate, leads, realData, userEmail, isAdmin,
           <span className="foot-val">{userEmail || "—"}</span>
         </div>
         <div className="foot-row">
-          <span className="foot-key">{isAdmin ? "Rol" : "Acceso"}</span>
-          <span className="foot-val">{isAdmin ? "Administrador" : cuentaActual?.nombreCorto ?? "Cuenta"}</span>
+          <span className="foot-key">Rol</span>
+          <span className="foot-val">{isAdmin ? "Administrador" : "Vendedor"}</span>
         </div>
         <button className="btn sign-out-btn" onClick={handleSignOut} disabled={signingOut}>
           {signingOut ? "Cerrando…" : "Cerrar sesión"}

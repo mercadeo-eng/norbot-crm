@@ -1,8 +1,8 @@
 "use client";
 
-import { CUENTAS, CUENTA_BY_KEY } from "@/lib/data";
+import { CUENTA_BY_KEY } from "@/lib/data";
 import { fmtMoney, fmtNum, fmtPct, mesLabel } from "@/lib/format";
-import type { Campana, Lead, Metrica } from "@/lib/types";
+import type { Campana, Cuenta, Lead, Metrica } from "@/lib/types";
 import { KpiBig } from "./KpiBig";
 import { Sparkline } from "./Sparkline";
 import { Mini, TrendChart } from "./charts";
@@ -13,11 +13,11 @@ interface PanelGeneralProps {
   campanas: Campana[];
   meses: string[];
   onOpenCuenta: (k: string) => void;
-  lockedCuenta?: string | null;
+  cuentaOptions: Cuenta[];
 }
 
-export function PanelGeneral({ metricas, leads, campanas, meses, onOpenCuenta, lockedCuenta }: PanelGeneralProps) {
-  const cuentasBase = lockedCuenta ? CUENTAS.filter((c) => c.key === lockedCuenta) : CUENTAS;
+export function PanelGeneral({ metricas, leads, campanas, meses, onOpenCuenta, cuentaOptions }: PanelGeneralProps) {
+  const cuentasBase = cuentaOptions;
   const mesActual = meses[meses.length - 1];
   const mesPrev = meses[meses.length - 2] || mesActual;
   const m = metricas.filter((x) => x.mes === mesActual);
@@ -81,7 +81,7 @@ export function PanelGeneral({ metricas, leads, campanas, meses, onOpenCuenta, l
           <div>
             <h3 className="card-title">Evolución últimos {meses.length} meses</h3>
             <p className="card-sub">
-              Alcance · Leads · Inversión{lockedCuenta ? "" : " (los 3 desarrollos sumados)"}
+              Alcance · Leads · Inversión{cuentaOptions.length > 1 ? " (cuentas sumadas)" : ""}
             </p>
           </div>
         </header>
@@ -95,10 +95,11 @@ export function PanelGeneral({ metricas, leads, campanas, meses, onOpenCuenta, l
         <header className="card-head">
           <div>
             <h3 className="card-title">
-              {lockedCuenta ? "Resumen de la cuenta" : "Desempeño por cuenta"} · {mesLabel(mesActual)}
+              {cuentaOptions.length === 1 ? "Resumen de la cuenta" : "Desempeño por cuenta"} ·{" "}
+              {mesLabel(mesActual)}
             </h3>
             <p className="card-sub">
-              {lockedCuenta ? "Detalle del desarrollo" : "Click una cuenta para abrir su panel detallado"}
+              {cuentaOptions.length === 1 ? "Detalle del desarrollo" : "Métricas del mes por cuenta"}
             </p>
           </div>
         </header>

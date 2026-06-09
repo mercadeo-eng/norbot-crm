@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CUENTAS, ETAPAS } from "@/lib/data";
+import { ETAPAS } from "@/lib/data";
 import { fmtNum, fmtPct } from "@/lib/format";
-import type { Etapa, Lead } from "@/lib/types";
+import type { Cuenta, Etapa, Lead } from "@/lib/types";
 import { KpiBig } from "./KpiBig";
 import { Donut } from "./Donut";
 import { ScrollX } from "./charts";
@@ -11,7 +11,7 @@ import { ScrollX } from "./charts";
 type CumItem = Etapa & { value: number };
 type Step = { from: CumItem; to: CumItem; lost: number; retain: number };
 
-export function EmbudoPage({ leads, lockedCuenta }: { leads: Lead[]; lockedCuenta?: string | null }) {
+export function EmbudoPage({ leads, cuentaOptions }: { leads: Lead[]; cuentaOptions: Cuenta[] }) {
   const [filtro, setFiltro] = useState("todas");
   const [fuente, setFuente] = useState("todas");
   const lcCuenta = useMemo(
@@ -68,10 +68,10 @@ export function EmbudoPage({ leads, lockedCuenta }: { leads: Lead[]; lockedCuent
   return (
     <div className="page">
       <div className="toolbar">
-        {!lockedCuenta && (
+        {cuentaOptions.length > 1 && (
           <select className="select" value={filtro} onChange={(e) => setFiltro(e.target.value)}>
             <option value="todas">Todas las cuentas</option>
-            {CUENTAS.map((c) => (
+            {cuentaOptions.map((c) => (
               <option key={c.key} value={c.key}>
                 {c.nombreCorto}
               </option>

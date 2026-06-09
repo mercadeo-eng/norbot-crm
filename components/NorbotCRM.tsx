@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent, ReactNode } from "react";
-import { CUENTA_BY_KEY, ETAPA_BY_KEY, MESES } from "@/lib/data";
+import { CUENTAS, CUENTA_BY_KEY, ETAPA_BY_KEY, MESES } from "@/lib/data";
 import { IMPORT_INFO } from "@/lib/csv";
 import type { Campana, ImportFlags, ImportTipo, Lead, Metrica, PostsByCuenta } from "@/lib/types";
 import {
@@ -24,6 +24,7 @@ import { CuentaPage } from "./CuentaPage";
 import { LeadModal } from "./LeadModal";
 import { NewLeadModal } from "./NewLeadModal";
 import { ImportModal } from "./ImportModal";
+import { VendedoresPanel } from "./VendedoresPanel";
 
 type NewLeadData = Omit<Lead, "id" | "etapa" | "fechaIngreso">;
 
@@ -33,9 +34,11 @@ interface NorbotCRMProps {
   initialMetricas: Metrica[];
   initialPosts: PostsByCuenta;
   userEmail: string;
-  role: "admin" | "cuenta";
-  /** Cuenta a la que está limitado el usuario; null para admin. */
-  allowedCuenta: string | null;
+  role: "admin" | "vendedor";
+  /** Cuentas IG a las que el vendedor tiene acceso (ignorado para admin). */
+  cuentas: string[];
+  /** ID del vendedor en sesión (para propiedad de leads). */
+  vendedorId: string;
 }
 
 export default function NorbotCRM({
@@ -45,10 +48,14 @@ export default function NorbotCRM({
   initialPosts,
   userEmail,
   role,
-  allowedCuenta,
+  cuentas,
+  vendedorId,
 }: NorbotCRMProps) {
   const isAdmin = role === "admin";
-  const lockedCuenta = isAdmin ? null : allowedCuenta;
+  // Cuentas que este usuario puede ver/filtrar (admin: todas; vendedor: las otorgadas).
+  const cuentasVisibles = isAdmin ? CUENTAS : CUENTAS.filter((c) => cuentas.includes(c.key));
+  // Si solo ve una cuenta, se "bloquea" a ella (se ocultan selectores).
+  const lockedCuenta = !isAdmin && cuentasVisibles.length === 1 ? cuentasVisibles[0].key : null;
 
   const [page, setPage] = useState("dashboard");
   const [leads, setLeads] = useState<Lead[]>(initialLeads);
@@ -67,7 +74,7 @@ export default function NorbotCRM({
   const [importCuenta, setImportCuenta] = useState<string | null>(null);
   const [filtroCuenta, setFiltroCuenta] = useState(lockedCuenta ?? "todas");
   const [search, setSearch] = useState("");
-  const [reporteCuenta, setReporteCuenta] = useState(lockedCuenta ?? "san_antonio");
+  const [reporteCuenta, setReporteCuenta] = useState(cuentasVisibles[0]?.key ?? "san_antonio");
   const [reporteMes, setReporteMes] = useState("2026-05");
   const [toast, setToast] = useState("");
   const dragLeadId = useRef<string | null>(null);
@@ -82,10 +89,8 @@ export default function NorbotCRM({
 
   // Navegación con guard: un usuario limitado no puede abrir otras cuentas.
   function navigate(p: string) {
-    if (p.startsWith("cuenta:")) {
-      const key = p.split(":")[1];
-      if (!isAdmin && key !== lockedCuenta) return;
-    }
+    // Las páginas por cuenta son solo del admin.
+    if (p.startsWith("cuenta:") && !isAdmin) return;
     setPage(p);
   }
 
@@ -262,7 +267,9 @@ export default function NorbotCRM({
         ),
         sub: lockedCuenta
           ? `Cuenta ${CUENTA_BY_KEY[lockedCuenta]?.nombreCorto ?? ""}`
-          : "Vista agregada de los 3 desarrollos en redes",
+          : isAdmin
+            ? "Vista agregada de los 3 desarrollos en redes"
+            : `Tus cuentas: ${cuentasVisibles.map((c) => c.nombreCorto).join(", ")}`,
       };
     if (page === "leads")
       return {
@@ -304,6 +311,16 @@ export default function NorbotCRM({
         ),
         sub: "Listo para presentar al cliente",
       };
+    if (page === "vendedores")
+      return {
+        eyebrow: "Administración",
+        title: (
+          <>
+            Gestión de <em>vendedores</em>
+          </>
+        ),
+        sub: "Accesos y cuentas por vendedor",
+      };
     if (page.startsWith("cuenta:")) {
       const c = CUENTA_BY_KEY[page.split(":")[1]];
       return { eyebrow: `${c?.tipo ?? ""} · ${c?.ubicacion ?? ""}`, title: <>{c?.nombreCorto ?? ""}</>, sub: c?.handle ?? "" };
@@ -333,7 +350,7 @@ export default function NorbotCRM({
           realData={realData}
           userEmail={userEmail}
           isAdmin={isAdmin}
-          lockedCuenta={lockedCuenta}
+          cuentaOptions={cuentasVisibles}
         />
         <main className="main">
           <header className={`page-header${inPanel ? " has-tabs" : ""}`}>
@@ -391,7 +408,7 @@ export default function NorbotCRM({
               campanas={campanas}
               meses={meses}
               onOpenCuenta={(k) => navigate(`cuenta:${k}`)}
-              lockedCuenta={lockedCuenta}
+              cuentaOptions={cuentasVisibles}
             />
           )}
           {page === "leads" && (
@@ -407,16 +424,16 @@ export default function NorbotCRM({
               onDragLeave={onDragLeave}
               onOpenLead={setSelectedLeadId}
               onNewLead={() => setShowNewLead(true)}
-              lockedCuenta={lockedCuenta}
+              cuentaOptions={cuentasVisibles}
             />
           )}
-          {page === "embudo" && <EmbudoPage leads={leads} lockedCuenta={lockedCuenta} />}
+          {page === "embudo" && <EmbudoPage leads={leads} cuentaOptions={cuentasVisibles} />}
           {page === "pautas" && (
             <PautasPage
               campanas={campanas}
               filtroCuenta={filtroCuenta}
               setFiltroCuenta={setFiltroCuenta}
-              lockedCuenta={lockedCuenta}
+              cuentaOptions={cuentasVisibles}
             />
           )}
           {page === "reportes" && (
@@ -430,7 +447,7 @@ export default function NorbotCRM({
               campanas={campanas}
               posts={posts}
               meses={meses}
-              lockedCuenta={lockedCuenta}
+              cuentaOptions={cuentasVisibles}
             />
           )}
           {page.startsWith("cuenta:") && (
@@ -456,6 +473,7 @@ export default function NorbotCRM({
               }}
             />
           )}
+          {page === "vendedores" && isAdmin && <VendedoresPanel />}
         </main>
       </div>
 
@@ -478,7 +496,7 @@ export default function NorbotCRM({
             addLead(data);
             setShowNewLead(false);
           }}
-          lockedCuenta={lockedCuenta}
+          cuentaOptions={cuentasVisibles}
         />
       )}
       {showImport && isAdmin && (
