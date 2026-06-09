@@ -6,15 +6,36 @@ import { fmtNum, fmtPct } from "@/lib/format";
 import type { Etapa, Lead } from "@/lib/types";
 import { KpiBig } from "./KpiBig";
 import { Donut } from "./Donut";
+import { ScrollX } from "./charts";
 
 type CumItem = Etapa & { value: number };
 type Step = { from: CumItem; to: CumItem; lost: number; retain: number };
 
 export function EmbudoPage({ leads, lockedCuenta }: { leads: Lead[]; lockedCuenta?: string | null }) {
   const [filtro, setFiltro] = useState("todas");
-  const lc = useMemo(
+  const [fuente, setFuente] = useState("todas");
+  const lcCuenta = useMemo(
     () => (filtro === "todas" ? leads : leads.filter((l) => l.cuenta === filtro)),
     [leads, filtro],
+  );
+  const lc = useMemo(
+    () => (fuente === "todas" ? lcCuenta : lcCuenta.filter((l) => l.origen === fuente)),
+    [lcCuenta, fuente],
+  );
+  const fuentes = useMemo(
+    () => [...new Set(leads.map((l) => l.origen).filter(Boolean))].sort(),
+    [leads],
+  );
+  const porFuente = useMemo(
+    () =>
+      fuentes
+        .map((o) => {
+          const xs = lcCuenta.filter((l) => l.origen === o);
+          const reservados = xs.filter((l) => l.etapa === "reservado" || l.etapa === "vendido").length;
+          return { origen: o, total: xs.length, reservados, conv: xs.length ? (reservados / xs.length) * 100 : 0 };
+        })
+        .sort((a, b) => b.total - a.total),
+    [fuentes, lcCuenta],
   );
   const total = lc.length;
   const countByKey = useMemo(() => {
@@ -57,6 +78,14 @@ export function EmbudoPage({ leads, lockedCuenta }: { leads: Lead[]; lockedCuent
             ))}
           </select>
         )}
+        <select className="select" value={fuente} onChange={(e) => setFuente(e.target.value)}>
+          <option value="todas">Todas las fuentes</option>
+          {fuentes.map((o) => (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ))}
+        </select>
         <span className="toolbar-hint">{total} leads en el embudo</span>
       </div>
 
@@ -106,6 +135,44 @@ export function EmbudoPage({ leads, lockedCuenta }: { leads: Lead[]; lockedCuent
             );
           })}
         </div>
+      </section>
+
+      <section className="card">
+        <header className="card-head">
+          <div>
+            <h3 className="card-title">Conversión por fuente</h3>
+            <p className="card-sub">Leads y cierres según el origen del lead</p>
+          </div>
+        </header>
+        <ScrollX>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Fuente</th>
+                <th className="num">Leads</th>
+                <th className="num">Reservados</th>
+                <th className="num">Conversión</th>
+              </tr>
+            </thead>
+            <tbody>
+              {porFuente.map((f) => (
+                <tr key={f.origen}>
+                  <td className="td-strong">{f.origen}</td>
+                  <td className="num">{fmtNum(f.total)}</td>
+                  <td className="num">{fmtNum(f.reservados)}</td>
+                  <td className="num">{fmtPct(f.conv, 0)}</td>
+                </tr>
+              ))}
+              {porFuente.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="col-empty">
+                    — sin datos —
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </ScrollX>
       </section>
 
       <div className="two-col">

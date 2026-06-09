@@ -50,14 +50,14 @@ export function Donut({
           return seg;
         })}
       </g>
-      <text x={cx} y={cy - 1} textAnchor="middle" fontFamily="'Fraunces', serif" fontSize="30" style={{ fill: "var(--ink)" }}>
+      <text x={cx} y={cy - 1} textAnchor="middle" fontFamily="'Poppins', sans-serif" fontSize="30" style={{ fill: "var(--ink)" }}>
         {total}
       </text>
       <text
         x={cx}
         y={cy + 18}
         textAnchor="middle"
-        fontFamily="'JetBrains Mono', monospace"
+        fontFamily="'Poppins', sans-serif"
         fontSize="9"
         letterSpacing="1.5"
         style={{ fill: "var(--muted)" }}

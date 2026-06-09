@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { CUENTAS, CUENTA_BY_KEY, ETAPAS } from "@/lib/data";
 import { compactDate, fmtMoney, fmtNum, fmtPct, longDate, mesLabel, prevMes } from "@/lib/format";
 import type { Campana, Lead, Metrica, PostsByCuenta } from "@/lib/types";
+import { exportLeadsToExcel } from "@/lib/excel";
 import { ExecKpi } from "./charts";
 
 interface ReportesPageProps {
@@ -30,10 +32,21 @@ export function ReportesPage({
   meses,
   lockedCuenta,
 }: ReportesPageProps) {
+  const [fuente, setFuente] = useState("todas");
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
   const c = CUENTA_BY_KEY[cuenta];
   const m = metricas.find((x) => x.cuenta === cuenta && x.mes === mes);
   const mPrev = metricas.find((x) => x.cuenta === cuenta && x.mes === prevMes(mes, meses));
-  const lc = leads.filter((l) => l.cuenta === cuenta);
+  const lcCuenta = leads.filter((l) => l.cuenta === cuenta);
+  const fuentes = [...new Set(lcCuenta.map((l) => l.origen).filter(Boolean))].sort();
+  // Leads filtrados por fuente y rango de fechas (alimentan el embudo y el export).
+  const lc = lcCuenta.filter((l) => {
+    if (fuente !== "todas" && l.origen !== fuente) return false;
+    if (desde && (l.fechaIngreso || "") < desde) return false;
+    if (hasta && (l.fechaIngreso || "") > hasta) return false;
+    return true;
+  });
   const cc = campanas.filter((x) => x.cuenta === cuenta);
   const postsCuenta = (posts[cuenta] || []).slice(0, 3);
   function delta(a?: number, b?: number) {
@@ -64,6 +77,33 @@ export function ReportesPage({
               </option>
             ))}
         </select>
+        <select className="select" value={fuente} onChange={(e) => setFuente(e.target.value)}>
+          <option value="todas">Todas las fuentes</option>
+          {fuentes.map((o) => (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ))}
+        </select>
+        <input
+          className="select"
+          type="date"
+          value={desde}
+          max={hasta || undefined}
+          onChange={(e) => setDesde(e.target.value)}
+          aria-label="Desde"
+        />
+        <input
+          className="select"
+          type="date"
+          value={hasta}
+          min={desde || undefined}
+          onChange={(e) => setHasta(e.target.value)}
+          aria-label="Hasta"
+        />
+        <button className="btn" onClick={() => exportLeadsToExcel(lc, `leads_${cuenta}_${mes}.xlsx`)}>
+          ⬇ Exportar a Excel
+        </button>
         <button className="btn btn-primary" onClick={() => window.print()}>
           🖨 Imprimir / Exportar PDF
         </button>
