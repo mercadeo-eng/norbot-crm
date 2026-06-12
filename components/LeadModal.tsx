@@ -1,19 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import { CUENTA_BY_KEY, ETAPAS, PRESUPUESTOS } from "@/lib/data";
-import { compactDate } from "@/lib/format";
-import type { Lead } from "@/lib/types";
+import { useEffect, useState } from "react";
+import { CUENTA_BY_KEY, ETAPAS, ETAPA_BY_KEY, PRESUPUESTOS } from "@/lib/data";
+import { compactDate, fmtDateTime, fmtVendedorNum } from "@/lib/format";
+import { getLeadHistorialAction } from "@/app/actions";
+import type { Lead, LeadHistorialEntry, VendedorInfo } from "@/lib/types";
 
 interface LeadModalProps {
   lead: Lead;
+  isAdmin: boolean;
+  vendedores: VendedorInfo[];
   onClose: () => void;
   onSave: (patch: Partial<Lead>) => void;
   onDelete: () => void;
-  onMove: (etapa: string) => void;
 }
 
-export function LeadModal({ lead, onClose, onSave, onDelete, onMove }: LeadModalProps) {
+const etapaTitle = (key: string | null) => (key ? ETAPA_BY_KEY[key]?.title ?? key : null);
+
+export function LeadModal({ lead, isAdmin, vendedores, onClose, onSave, onDelete }: LeadModalProps) {
   const [form, setForm] = useState({
     etapa: lead.etapa,
     notas: lead.notas,
@@ -21,7 +25,23 @@ export function LeadModal({ lead, onClose, onSave, onDelete, onMove }: LeadModal
     email: lead.email,
     presupuesto: lead.presupuesto || "",
   });
+  const [historial, setHistorial] = useState<LeadHistorialEntry[] | null>(null);
   const c = CUENTA_BY_KEY[lead.cuenta];
+  const vendedorAsignado = lead.vendedor ? vendedores.find((v) => v.id === lead.vendedor) : null;
+
+  useEffect(() => {
+    let alive = true;
+    getLeadHistorialAction(lead.id)
+      .then((rows) => {
+        if (alive) setHistorial(rows);
+      })
+      .catch(() => {
+        if (alive) setHistorial([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [lead.id]);
   return (
     <>
       <div className="modal-back" onClick={onClose} />
@@ -59,6 +79,20 @@ export function LeadModal({ lead, onClose, onSave, onDelete, onMove }: LeadModal
               <span className="lead-actions-empty">Agrega un teléfono para llamar o escribir por WhatsApp</span>
             )}
           </div>
+          {isAdmin && (
+            <div className="fld">
+              <label>Vendedor asignado</label>
+              {vendedorAsignado ? (
+                <div className="vend-asignado">
+                  <span className="vend-num">#{fmtVendedorNum(vendedorAsignado.num)}</span>
+                  <span className="vend-nombre">{vendedorAsignado.nombre}</span>
+                  <span className="vend-mail">{vendedorAsignado.email}</span>
+                </div>
+              ) : (
+                <div className="vend-asignado sin">— sin asignar —</div>
+              )}
+            </div>
+          )}
           <div className="fld">
             <label>Etapa</label>
             <div className="etapa-pills">
@@ -103,6 +137,30 @@ export function LeadModal({ lead, onClose, onSave, onDelete, onMove }: LeadModal
             <label>Notas internas</label>
             <textarea rows={5} value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} />
           </div>
+          <div className="fld">
+            <label>Historial del pipeline</label>
+            <div className="hist-list">
+              {historial === null && <div className="hist-empty">Cargando…</div>}
+              {historial !== null && historial.length === 0 && (
+                <div className="hist-empty">— sin movimientos registrados —</div>
+              )}
+              {historial?.map((h) => (
+                <div key={h.id} className="hist-row">
+                  <span className="hist-date">{fmtDateTime(h.createdAt)}</span>
+                  <span className="hist-move">
+                    {h.etapaAnterior ? (
+                      <>
+                        {etapaTitle(h.etapaAnterior)} <span className="hist-arrow">→</span> {etapaTitle(h.etapaNueva)}
+                      </>
+                    ) : (
+                      <>Creado como {etapaTitle(h.etapaNueva)}</>
+                    )}
+                  </span>
+                  <span className="hist-by">{h.cambiadoPor}</span>
+                </div>
+              ))}
+            </div>
+          </div>
           <div className="fld-info">
             <span>
               <strong>Ingreso:</strong> {compactDate(lead.fechaIngreso)}
@@ -123,8 +181,9 @@ export function LeadModal({ lead, onClose, onSave, onDelete, onMove }: LeadModal
           <button
             className="btn btn-primary"
             onClick={() => {
+              // onSave persiste todos los campos (incluida la etapa) en una sola
+              // acción; así el historial registra el cambio exactamente una vez.
               onSave(form);
-              if (form.etapa !== lead.etapa) onMove(form.etapa);
               onClose();
             }}
           >

@@ -14,6 +14,21 @@ export const compactDate = (s?: string) => {
 export const longDate = (d: Date) =>
   d.toLocaleDateString("es-PA", { day: "numeric", month: "long", year: "numeric" });
 
+/** Formatea el número de vendedor a 4 dígitos (1 → "0001"). */
+export const fmtVendedorNum = (num: number) => String(num || 0).padStart(4, "0");
+
+/** Fecha y hora compactas para el historial (de un timestamp ISO). */
+export const fmtDateTime = (iso?: string) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return (
+    d.toLocaleDateString("es-PA", { day: "2-digit", month: "short", year: "numeric" }) +
+    " · " +
+    d.toLocaleTimeString("es-PA", { hour: "2-digit", minute: "2-digit" })
+  );
+};
+
 export function mesLabel(mes?: string) {
   if (!mes) return "—";
   const parts = String(mes).split("-");

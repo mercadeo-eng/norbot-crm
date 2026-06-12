@@ -516,5 +516,24 @@ body {
 .vend-msg { font-size: 12.5px; color: var(--ink-soft); background: #eef2ff; border-radius: 8px; padding: 8px 12px; margin-top: 4px; }
 .vend-list { display: flex; flex-direction: column; gap: 10px; }
 .vend-row { display: grid; grid-template-columns: 1fr auto auto; gap: 16px; align-items: center; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); }
-.vend-email { font-weight: 600; font-size: 13.5px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; }
+.vend-email { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+.vend-ident { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.vend-nombre { font-weight: 600; font-size: 13.5px; color: var(--ink); }
+.vend-num { font-size: 11px; font-weight: 700; color: var(--accent); background: #eef2ff; border: 1px solid #c7d2fe; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
 @media (max-width: 760px) { .vend-row { grid-template-columns: 1fr; gap: 10px; } }
+
+/* Vendedor asignado (modal del lead, admin) */
+.vend-asignado { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); font-size: 13px; color: var(--ink); flex-wrap: wrap; }
+.vend-asignado.sin { color: var(--muted); font-style: italic; }
+.vend-mail { font-size: 11.5px; color: var(--muted); }
+
+/* Historial del pipeline (modal del lead) */
+.hist-list { display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); padding: 8px 10px; }
+.hist-row { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: baseline; font-size: 12px; padding: 4px 2px; border-bottom: 1px dashed var(--line); }
+.hist-row:last-child { border-bottom: 0; }
+.hist-date { color: var(--muted); white-space: nowrap; font-size: 11px; }
+.hist-move { color: var(--ink); font-weight: 500; }
+.hist-arrow { color: var(--accent); }
+.hist-by { color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+.hist-empty { font-size: 12px; color: var(--muted); font-style: italic; text-align: center; padding: 6px; }
+@media (max-width: 600px) { .hist-row { grid-template-columns: 1fr; gap: 2px; } }

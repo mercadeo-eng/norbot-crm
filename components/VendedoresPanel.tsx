@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { CUENTAS } from "@/lib/data";
+import { fmtVendedorNum } from "@/lib/format";
 import {
   createVendedorAction,
   deleteVendedorAction,
@@ -16,6 +17,7 @@ export function VendedoresPanel() {
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nuevasCuentas, setNuevasCuentas] = useState<string[]>([]);
@@ -35,14 +37,15 @@ export function VendedoresPanel() {
 
   async function crear(e: FormEvent) {
     e.preventDefault();
-    if (!email.trim() || password.length < 6) {
-      setMsg("Correo y contraseña (mínimo 6 caracteres) son obligatorios.");
+    if (!nombre.trim() || !email.trim() || password.length < 6) {
+      setMsg("Nombre, correo y contraseña (mínimo 6 caracteres) son obligatorios.");
       return;
     }
     setBusy(true);
     setMsg("");
     try {
-      await createVendedorAction(email, password, nuevasCuentas);
+      await createVendedorAction(email, password, nombre, nuevasCuentas);
+      setNombre("");
       setEmail("");
       setPassword("");
       setNuevasCuentas([]);
@@ -100,12 +103,22 @@ export function VendedoresPanel() {
         <form className="vend-form" onSubmit={crear}>
           <div className="fld-row">
             <div className="fld">
+              <label>Nombre</label>
+              <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre y apellido" />
+            </div>
+            <div className="fld">
               <label>Correo</label>
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="vendedor@norbotgroup.com" />
             </div>
+          </div>
+          <div className="fld-row">
             <div className="fld">
               <label>Contraseña</label>
               <input type="text" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="mínimo 6 caracteres" />
+            </div>
+            <div className="fld">
+              <label>Número de ID</label>
+              <input value="se asigna automáticamente" disabled />
             </div>
           </div>
           <div className="fld">
@@ -138,7 +151,13 @@ export function VendedoresPanel() {
           <div className="vend-list">
             {vendedores.map((v) => (
               <div key={v.id} className="vend-row">
-                <div className="vend-email">{v.email}</div>
+                <div className="vend-ident">
+                  <span className="vend-num">#{fmtVendedorNum(v.num)}</span>
+                  <div>
+                    <div className="vend-nombre">{v.nombre}</div>
+                    <div className="vend-email">{v.email}</div>
+                  </div>
+                </div>
                 <div className="vend-chips">
                   {CUENTAS.map((c) => chip(c.key, v.cuentas.includes(c.key), c.brand, c.nombreCorto, () => toggleCuenta(v, c.key)))}
                 </div>

@@ -10,6 +10,12 @@ interface LeadsPipelineProps {
   leads: Lead[];
   filtroCuenta: string;
   setFiltroCuenta: (v: string) => void;
+  filtroEtapa: string;
+  setFiltroEtapa: (v: string) => void;
+  filtroDesde: string;
+  setFiltroDesde: (v: string) => void;
+  filtroHasta: string;
+  setFiltroHasta: (v: string) => void;
   search: string;
   setSearch: (v: string) => void;
   onDragStart: (e: DragEvent, id: string) => void;
@@ -25,6 +31,12 @@ export function LeadsPipeline({
   leads,
   filtroCuenta,
   setFiltroCuenta,
+  filtroEtapa,
+  setFiltroEtapa,
+  filtroDesde,
+  setFiltroDesde,
+  filtroHasta,
+  setFiltroHasta,
   search,
   setSearch,
   onDragStart,
@@ -56,6 +68,30 @@ export function LeadsPipeline({
             ))}
           </select>
         )}
+        <select className="select" value={filtroEtapa} onChange={(e) => setFiltroEtapa(e.target.value)}>
+          <option value="todas">Todas las etapas</option>
+          {ETAPAS.map((e) => (
+            <option key={e.key} value={e.key}>
+              {e.title}
+            </option>
+          ))}
+        </select>
+        <input
+          className="select"
+          type="date"
+          value={filtroDesde}
+          max={filtroHasta || undefined}
+          onChange={(e) => setFiltroDesde(e.target.value)}
+          aria-label="Desde"
+        />
+        <input
+          className="select"
+          type="date"
+          value={filtroHasta}
+          min={filtroDesde || undefined}
+          onChange={(e) => setFiltroHasta(e.target.value)}
+          aria-label="Hasta"
+        />
         <button className="btn btn-primary" onClick={onNewLead}>
           <span className="plus">＋</span> Nuevo lead
         </button>

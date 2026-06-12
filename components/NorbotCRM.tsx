@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent, ReactNode } from "react";
 import { CUENTAS, CUENTA_BY_KEY, ETAPA_BY_KEY, MESES } from "@/lib/data";
 import { IMPORT_INFO } from "@/lib/csv";
-import type { Campana, ImportFlags, ImportTipo, Lead, Metrica, PostsByCuenta } from "@/lib/types";
+import type { Campana, ImportFlags, ImportTipo, Lead, Metrica, PostsByCuenta, VendedorInfo } from "@/lib/types";
 import {
   addLeadAction,
   deleteLeadAction,
@@ -39,6 +39,8 @@ interface NorbotCRMProps {
   cuentas: string[];
   /** ID del vendedor en sesión (para propiedad de leads). */
   vendedorId: string;
+  /** Vendedores registrados (solo se llena para el admin). */
+  vendedores: VendedorInfo[];
 }
 
 export default function NorbotCRM({
@@ -50,6 +52,7 @@ export default function NorbotCRM({
   role,
   cuentas,
   vendedorId,
+  vendedores,
 }: NorbotCRMProps) {
   const isAdmin = role === "admin";
   // Cuentas que este usuario puede ver/filtrar (admin: todas; vendedor: las otorgadas).
@@ -73,6 +76,9 @@ export default function NorbotCRM({
   const [showImport, setShowImport] = useState(false);
   const [importCuenta, setImportCuenta] = useState<string | null>(null);
   const [filtroCuenta, setFiltroCuenta] = useState(lockedCuenta ?? "todas");
+  const [filtroEtapa, setFiltroEtapa] = useState("todas");
+  const [filtroDesde, setFiltroDesde] = useState("");
+  const [filtroHasta, setFiltroHasta] = useState("");
   const [search, setSearch] = useState("");
   const [reporteCuenta, setReporteCuenta] = useState(cuentasVisibles[0]?.key ?? "san_antonio");
   const [reporteMes, setReporteMes] = useState("2026-05");
@@ -124,6 +130,9 @@ export default function NorbotCRM({
   const leadsFiltrados = useMemo(() => {
     let xs = leads;
     if (filtroCuenta !== "todas") xs = xs.filter((l) => l.cuenta === filtroCuenta);
+    if (filtroEtapa !== "todas") xs = xs.filter((l) => l.etapa === filtroEtapa);
+    if (filtroDesde) xs = xs.filter((l) => (l.fechaIngreso || "") >= filtroDesde);
+    if (filtroHasta) xs = xs.filter((l) => (l.fechaIngreso || "") <= filtroHasta);
     if (search.trim()) {
       const q = search.toLowerCase();
       xs = xs.filter(
@@ -134,7 +143,7 @@ export default function NorbotCRM({
       );
     }
     return xs;
-  }, [leads, filtroCuenta, search]);
+  }, [leads, filtroCuenta, filtroEtapa, filtroDesde, filtroHasta, search]);
 
   const headerStats = useMemo(() => {
     const total = leads.length;
@@ -416,6 +425,12 @@ export default function NorbotCRM({
               leads={leadsFiltrados}
               filtroCuenta={filtroCuenta}
               setFiltroCuenta={setFiltroCuenta}
+              filtroEtapa={filtroEtapa}
+              setFiltroEtapa={setFiltroEtapa}
+              filtroDesde={filtroDesde}
+              setFiltroDesde={setFiltroDesde}
+              filtroHasta={filtroHasta}
+              setFiltroHasta={setFiltroHasta}
               search={search}
               setSearch={setSearch}
               onDragStart={onDragStart}
@@ -480,13 +495,14 @@ export default function NorbotCRM({
       {selectedLead && (
         <LeadModal
           lead={selectedLead}
+          isAdmin={isAdmin}
+          vendedores={vendedores}
           onClose={() => setSelectedLeadId(null)}
           onSave={(patch) => {
             updateLead(selectedLead.id, patch);
             showToast("Cambios guardados");
           }}
           onDelete={() => deleteLead(selectedLead.id)}
-          onMove={(etapa) => moveLead(selectedLead.id, etapa)}
         />
       )}
       {showNewLead && (

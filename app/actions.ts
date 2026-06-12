@@ -17,10 +17,22 @@ import {
   leadToInsert,
   metricaToRow,
   postToInsert,
+  rowToHistorial,
   rowToLead,
   type CrmData,
 } from "@/lib/mappers";
-import type { Campana, ImportTipo, Lead, Metrica, PostsByCuenta, VendedorInfo } from "@/lib/types";
+import { normalizeEtapa } from "@/lib/data";
+import { fetchVendedores } from "@/lib/vendedores";
+import type {
+  Campana,
+  ImportTipo,
+  Lead,
+  LeadHistorialEntry,
+  Metrica,
+  PostsByCuenta,
+  VendedorInfo,
+} from "@/lib/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Result<T> = { data: T | null; error: { message: string } | null };
 function check<T>(res: Result<T>, ctx: string): T {
@@ -38,36 +50,125 @@ function requireAdmin(info: SessionInfo) {
   if (info.role !== "admin") throw new Error("Acción permitida solo al administrador");
 }
 
+/**
+ * Registra un cambio de etapa en lead_historial. Tolerante a fallos: si la
+ * tabla aún no existe, el CRM sigue funcionando (el historial queda vacío).
+ */
+async function logHistorial(
+  admin: SupabaseClient,
+  leadId: string,
+  etapaAnterior: string | null,
+  etapaNueva: string,
+  cambiadoPor: string,
+): Promise<void> {
+  try {
+    await admin.from("lead_historial").insert({
+      lead_id: leadId,
+      etapa_anterior: etapaAnterior,
+      etapa_nueva: etapaNueva,
+      cambiado_por: cambiadoPor,
+    });
+  } catch {
+    // tabla ausente u otro fallo no crítico: no bloquear la operación principal
+  }
+}
+
+/**
+ * Round-robin (#6): elige el siguiente vendedor con acceso a la cuenta,
+ * siguiendo el orden de su número de ID. La rotación continúa después del
+ * último vendedor que recibió un lead en esa cuenta.
+ */
+async function pickNextVendedor(admin: SupabaseClient, cuenta: string): Promise<string | null> {
+  const vendedores = (await fetchVendedores(admin)).filter((v) => v.cuentas.includes(cuenta));
+  if (!vendedores.length) return null;
+  const { data } = await admin
+    .from("leads")
+    .select("vendedor, created_at")
+    .eq("cuenta", cuenta)
+    .not("vendedor", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  const ultimo = data?.[0]?.vendedor as string | undefined;
+  const idx = vendedores.findIndex((v) => v.id === ultimo);
+  return vendedores[(idx + 1) % vendedores.length].id;
+}
+
 /* ─────────────────── operaciones por lead ─────────────────── */
 export async function addLeadAction(data: Omit<Lead, "id" | "etapa" | "fechaIngreso">): Promise<Lead> {
   const session = await requireUser();
   const admin = createSupabaseAdminClient();
   // Un vendedor solo crea en SUS cuentas y el lead queda a su nombre (dueño).
+  // Si crea el admin, el CRM asigna automáticamente al siguiente vendedor (#6).
   const esVendedor = session.role === "vendedor";
   const cuenta =
     esVendedor && !session.cuentas.includes(data.cuenta) ? session.cuentas[0] ?? data.cuenta : data.cuenta;
+  const vendedor = esVendedor ? session.userId : await pickNextVendedor(admin, cuenta);
   const row = {
     ...leadToInsert({ ...data, cuenta, etapa: "nuevo", fechaIngreso: new Date().toISOString().slice(0, 10) }),
-    vendedor: esVendedor ? session.userId : null,
+    vendedor,
   };
   const res = await admin.from("leads").insert(row).select().single();
-  return rowToLead(check(res, "addLead"));
+  const lead = rowToLead(check(res, "addLead"));
+  await logHistorial(admin, lead.id, null, "nuevo", session.email);
+  return lead;
+}
+
+/** Lee la etapa actual de un lead respetando el scoping del vendedor. */
+async function getEtapaActual(admin: SupabaseClient, session: SessionInfo, id: string): Promise<string | null> {
+  let q = admin.from("leads").select("etapa").eq("id", id);
+  if (session.role === "vendedor") q = q.eq("vendedor", session.userId);
+  const { data } = await q.maybeSingle();
+  return data ? normalizeEtapa(String(data.etapa)) : null;
 }
 
 export async function moveLeadAction(id: string, etapa: string): Promise<void> {
   const session = await requireUser();
   const admin = createSupabaseAdminClient();
+  const anterior = await getEtapaActual(admin, session, id);
   let q = admin.from("leads").update(leadPatchToRow({ etapa })).eq("id", id);
   if (session.role === "vendedor") q = q.eq("vendedor", session.userId);
   check(await q, "moveLead");
+  const nueva = normalizeEtapa(etapa);
+  if (anterior !== null && anterior !== nueva) await logHistorial(admin, id, anterior, nueva, session.email);
 }
 
 export async function updateLeadAction(id: string, patch: Partial<Lead>): Promise<void> {
   const session = await requireUser();
   const admin = createSupabaseAdminClient();
+  const anterior = patch.etapa !== undefined ? await getEtapaActual(admin, session, id) : null;
   let q = admin.from("leads").update(leadPatchToRow(patch)).eq("id", id);
   if (session.role === "vendedor") q = q.eq("vendedor", session.userId);
   check(await q, "updateLead");
+  if (patch.etapa !== undefined && anterior !== null) {
+    const nueva = normalizeEtapa(patch.etapa);
+    if (anterior !== nueva) await logHistorial(admin, id, anterior, nueva, session.email);
+  }
+}
+
+/** Historial de cambios de etapa de un lead (admin: todos; vendedor: solo los suyos). */
+export async function getLeadHistorialAction(leadId: string): Promise<LeadHistorialEntry[]> {
+  const session = await requireUser();
+  const admin = createSupabaseAdminClient();
+  if (session.role === "vendedor") {
+    const { data } = await admin
+      .from("leads")
+      .select("id")
+      .eq("id", leadId)
+      .eq("vendedor", session.userId)
+      .maybeSingle();
+    if (!data) return [];
+  }
+  try {
+    const { data, error } = await admin
+      .from("lead_historial")
+      .select("*")
+      .eq("lead_id", leadId)
+      .order("created_at", { ascending: false });
+    if (error) return [];
+    return (data ?? []).map(rowToHistorial);
+  } catch {
+    return [];
+  }
 }
 
 export async function deleteLeadAction(id: string): Promise<void> {
@@ -143,25 +244,25 @@ export async function restoreDemoAction(): Promise<CrmData> {
 export async function listVendedoresAction(): Promise<VendedorInfo[]> {
   requireAdmin(await requireUser());
   const admin = createSupabaseAdminClient();
-  const { data, error } = await admin.auth.admin.listUsers({ perPage: 1000 });
-  if (error) throw new Error("listVendedores: " + error.message);
-  return data.users
-    .filter((u) => (u.app_metadata as { role?: string })?.role === "vendedor")
-    .map((u) => ({
-      id: u.id,
-      email: u.email ?? "",
-      cuentas: (u.app_metadata as { cuentas?: string[] })?.cuentas ?? [],
-    }));
+  return fetchVendedores(admin);
 }
 
-export async function createVendedorAction(email: string, password: string, cuentas: string[]): Promise<void> {
+export async function createVendedorAction(
+  email: string,
+  password: string,
+  nombre: string,
+  cuentas: string[],
+): Promise<void> {
   requireAdmin(await requireUser());
   const admin = createSupabaseAdminClient();
+  // #4: número de ID secuencial de 4 dígitos — siguiente al mayor existente.
+  const existentes = await fetchVendedores(admin);
+  const num = existentes.reduce((max, v) => Math.max(max, v.num), 0) + 1;
   const { error } = await admin.auth.admin.createUser({
     email: email.trim().toLowerCase(),
     password,
     email_confirm: true,
-    app_metadata: { role: "vendedor", cuentas },
+    app_metadata: { role: "vendedor", cuentas, nombre: nombre.trim(), vendedor_num: num },
   });
   if (error) throw new Error("createVendedor: " + error.message);
 }
@@ -169,7 +270,13 @@ export async function createVendedorAction(email: string, password: string, cuen
 export async function updateVendedorCuentasAction(id: string, cuentas: string[]): Promise<void> {
   requireAdmin(await requireUser());
   const admin = createSupabaseAdminClient();
-  const { error } = await admin.auth.admin.updateUserById(id, { app_metadata: { role: "vendedor", cuentas } });
+  // Conserva nombre y número de ID: leer el metadata actual y reescribirlo completo.
+  const { data: current, error: getErr } = await admin.auth.admin.getUserById(id);
+  if (getErr || !current?.user) throw new Error("updateVendedor: usuario no encontrado");
+  const meta = (current.user.app_metadata ?? {}) as Record<string, unknown>;
+  const { error } = await admin.auth.admin.updateUserById(id, {
+    app_metadata: { ...meta, role: "vendedor", cuentas },
+  });
   if (error) throw new Error("updateVendedor: " + error.message);
 }
 

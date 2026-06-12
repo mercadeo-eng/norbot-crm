@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizeEtapa } from "./data";
-import type { Campana, Cuenta, Lead, Metrica, Post, PostsByCuenta } from "./types";
+import type { Campana, Cuenta, Lead, LeadHistorialEntry, Metrica, Post, PostsByCuenta } from "./types";
 
 /* ─────────── filas de la BD → modelos de la app (snake → camel) ─────────── */
 type AnyRow = Record<string, unknown>;
@@ -20,6 +20,7 @@ export function rowToLead(r: AnyRow): Lead {
     fechaIngreso: str(r.fecha_ingreso),
     presupuesto: str(r.presupuesto),
     notas: str(r.notas),
+    vendedor: r.vendedor ? String(r.vendedor) : null,
   };
 }
 export function rowToCampana(r: AnyRow): Campana {
@@ -53,6 +54,17 @@ export function rowToMetrica(r: AnyRow): Metrica {
     conversiones: num(r.conversiones),
   };
 }
+export function rowToHistorial(r: AnyRow): LeadHistorialEntry {
+  return {
+    id: String(r.id),
+    leadId: str(r.lead_id),
+    etapaAnterior: r.etapa_anterior ? str(r.etapa_anterior) : null,
+    etapaNueva: str(r.etapa_nueva),
+    cambiadoPor: str(r.cambiado_por),
+    createdAt: str(r.created_at),
+  };
+}
+
 export function rowToPost(r: AnyRow): Post {
   return {
     id: String(r.id),

@@ -14,9 +14,20 @@ type Step = { from: CumItem; to: CumItem; lost: number; retain: number };
 export function EmbudoPage({ leads, cuentaOptions }: { leads: Lead[]; cuentaOptions: Cuenta[] }) {
   const [filtro, setFiltro] = useState("todas");
   const [fuente, setFuente] = useState("todas");
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
+  const lcFecha = useMemo(
+    () =>
+      leads.filter((l) => {
+        if (desde && (l.fechaIngreso || "") < desde) return false;
+        if (hasta && (l.fechaIngreso || "") > hasta) return false;
+        return true;
+      }),
+    [leads, desde, hasta],
+  );
   const lcCuenta = useMemo(
-    () => (filtro === "todas" ? leads : leads.filter((l) => l.cuenta === filtro)),
-    [leads, filtro],
+    () => (filtro === "todas" ? lcFecha : lcFecha.filter((l) => l.cuenta === filtro)),
+    [lcFecha, filtro],
   );
   const lc = useMemo(
     () => (fuente === "todas" ? lcCuenta : lcCuenta.filter((l) => l.origen === fuente)),
@@ -86,6 +97,22 @@ export function EmbudoPage({ leads, cuentaOptions }: { leads: Lead[]; cuentaOpti
             </option>
           ))}
         </select>
+        <input
+          className="select"
+          type="date"
+          value={desde}
+          max={hasta || undefined}
+          onChange={(e) => setDesde(e.target.value)}
+          aria-label="Desde"
+        />
+        <input
+          className="select"
+          type="date"
+          value={hasta}
+          min={desde || undefined}
+          onChange={(e) => setHasta(e.target.value)}
+          aria-label="Hasta"
+        />
         <span className="toolbar-hint">{total} leads en el embudo</span>
       </div>
 

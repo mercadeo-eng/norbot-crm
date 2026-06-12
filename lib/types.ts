@@ -33,6 +33,8 @@ export interface Lead {
   fechaIngreso: string;
   presupuesto: string;
   notas: string;
+  /** ID (uuid) del vendedor que atiende este lead; null = sin asignar. */
+  vendedor?: string | null;
 }
 
 export interface Campana {
@@ -105,5 +107,17 @@ export interface ImportFlags {
 export interface VendedorInfo {
   id: string;
   email: string;
+  nombre: string;
+  /** Número secuencial del vendedor (se muestra como 4 dígitos: 0001, 0002…). */
+  num: number;
   cuentas: string[];
+}
+
+export interface LeadHistorialEntry {
+  id: string;
+  leadId: string;
+  etapaAnterior: string | null;
+  etapaNueva: string;
+  cambiadoPor: string;
+  createdAt: string;
 }
