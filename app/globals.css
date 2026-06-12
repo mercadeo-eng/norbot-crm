@@ -537,3 +537,7 @@ body {
 .hist-by { color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
 .hist-empty { font-size: 12px; color: var(--muted); font-style: italic; text-align: center; padding: 6px; }
 @media (max-width: 600px) { .hist-row { grid-template-columns: 1fr; gap: 2px; } }
+
+/* Jobs de correo (panel de vendedores) */
+.job-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+.job-log { margin-top: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); padding: 10px 12px; font-size: 12px; color: var(--ink-soft); display: flex; flex-direction: column; gap: 3px; max-height: 200px; overflow-y: auto; }

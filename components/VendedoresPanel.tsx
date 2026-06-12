@@ -8,6 +8,8 @@ import {
   createVendedorAction,
   deleteVendedorAction,
   listVendedoresAction,
+  runRecordatoriosAction,
+  runResumenAdminAction,
   updateVendedorCuentasAction,
 } from "@/app/actions";
 import type { VendedorInfo } from "@/lib/types";
@@ -21,6 +23,25 @@ export function VendedoresPanel() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nuevasCuentas, setNuevasCuentas] = useState<string[]>([]);
+  const [jobBusy, setJobBusy] = useState("");
+  const [jobLog, setJobLog] = useState<string[]>([]);
+
+  async function correrJob(tipo: "recordatorios" | "resumen") {
+    setJobBusy(tipo);
+    setJobLog([]);
+    try {
+      const r = tipo === "recordatorios" ? await runRecordatoriosAction() : await runResumenAdminAction();
+      setJobLog([
+        r.emailActivo
+          ? `✓ ${r.correosEnviados} correo${r.correosEnviados === 1 ? "" : "s"} enviado${r.correosEnviados === 1 ? "" : "s"}.`
+          : "⚠ Envío desactivado (falta RESEND_API_KEY) — vista previa del resultado:",
+        ...r.detalle,
+      ]);
+    } catch {
+      setJobLog(["✕ No se pudo ejecutar el job."]);
+    }
+    setJobBusy("");
+  }
 
   async function refresh() {
     setLoading(true);
@@ -167,6 +188,33 @@ export function VendedoresPanel() {
               </div>
             ))}
             {vendedores.length === 0 && <div className="col-empty">— aún no hay vendedores —</div>}
+          </div>
+        )}
+      </section>
+
+      <section className="card">
+        <header className="card-head">
+          <div>
+            <h3 className="card-title">Notificaciones por correo</h3>
+            <p className="card-sub">
+              Automáticas: recordatorio de leads sin movimiento (cada 3 días) y resumen al admin (cada 7).
+              Aquí puedes dispararlas manualmente.
+            </p>
+          </div>
+        </header>
+        <div className="job-btns">
+          <button className="btn" onClick={() => correrJob("recordatorios")} disabled={!!jobBusy}>
+            {jobBusy === "recordatorios" ? "Enviando…" : "✉ Enviar recordatorios ahora"}
+          </button>
+          <button className="btn" onClick={() => correrJob("resumen")} disabled={!!jobBusy}>
+            {jobBusy === "resumen" ? "Enviando…" : "📊 Enviar resumen semanal ahora"}
+          </button>
+        </div>
+        {jobLog.length > 0 && (
+          <div className="job-log">
+            {jobLog.map((line, i) => (
+              <div key={i}>{line}</div>
+            ))}
           </div>
         )}
       </section>

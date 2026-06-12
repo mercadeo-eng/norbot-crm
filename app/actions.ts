@@ -23,6 +23,8 @@ import {
 } from "@/lib/mappers";
 import { normalizeEtapa } from "@/lib/data";
 import { fetchVendedores } from "@/lib/vendedores";
+import { sendEmail, tplNuevoLead } from "@/lib/email";
+import { runRecordatorios, runResumenAdmin, type JobResult } from "@/lib/email-jobs";
 import type {
   Campana,
   ImportTipo,
@@ -110,6 +112,21 @@ export async function addLeadAction(data: Omit<Lead, "id" | "etapa" | "fechaIngr
   const res = await admin.from("leads").insert(row).select().single();
   const lead = rowToLead(check(res, "addLead"));
   await logHistorial(admin, lead.id, null, "nuevo", session.email);
+  // Notificar por correo al vendedor asignado (cuando no fue él quien lo creó).
+  if (vendedor && !esVendedor) {
+    try {
+      const info = (await fetchVendedores(admin)).find((v) => v.id === vendedor);
+      if (info) {
+        await sendEmail(
+          info.email,
+          `Nuevo lead asignado: ${lead.nombre}`,
+          tplNuevoLead(lead, info.nombre, info.num),
+        );
+      }
+    } catch {
+      // best-effort: el alta del lead nunca depende del correo
+    }
+  }
   return lead;
 }
 
@@ -285,4 +302,17 @@ export async function deleteVendedorAction(id: string): Promise<void> {
   const admin = createSupabaseAdminClient();
   const { error } = await admin.auth.admin.deleteUser(id);
   if (error) throw new Error("deleteVendedor: " + error.message);
+}
+
+/* ─────────────────── correos: disparo manual (solo admin) ─────────────────── */
+/** Ejecuta ahora el job de recordatorios (leads ≥3 días sin movimiento). */
+export async function runRecordatoriosAction(): Promise<JobResult> {
+  requireAdmin(await requireUser());
+  return runRecordatorios(createSupabaseAdminClient());
+}
+
+/** Ejecuta ahora el resumen semanal de vendedores para los admins. */
+export async function runResumenAdminAction(): Promise<JobResult> {
+  requireAdmin(await requireUser());
+  return runResumenAdmin(createSupabaseAdminClient());
 }

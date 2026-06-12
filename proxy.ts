@@ -48,7 +48,8 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Todas las rutas excepto estáticos e imágenes.
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    // Todas las rutas excepto estáticos, imágenes y la API (los crons llevan
+    // su propia autenticación con CRON_SECRET en la ruta).
+    "/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
