@@ -284,6 +284,44 @@ export async function createVendedorAction(
   if (error) throw new Error("createVendedor: " + error.message);
 }
 
+/**
+ * Edita las credenciales/datos de un vendedor (solo admin): nombre, correo y/o
+ * contraseña. Conserva el resto del app_metadata (rol, cuentas, número de ID).
+ * Solo aplica los campos provistos (no vacíos).
+ */
+export async function updateVendedorCredencialesAction(
+  id: string,
+  cambios: { nombre?: string; email?: string; password?: string },
+): Promise<void> {
+  requireAdmin(await requireUser());
+  const admin = createSupabaseAdminClient();
+  const { data: current, error: getErr } = await admin.auth.admin.getUserById(id);
+  if (getErr || !current?.user) throw new Error("updateVendedorCredenciales: usuario no encontrado");
+
+  const meta = (current.user.app_metadata ?? {}) as Record<string, unknown>;
+  const payload: {
+    email?: string;
+    password?: string;
+    email_confirm?: boolean;
+    app_metadata?: Record<string, unknown>;
+  } = {};
+
+  const nombre = cambios.nombre?.trim();
+  const email = cambios.email?.trim().toLowerCase();
+  const password = cambios.password;
+
+  if (email && email !== current.user.email) {
+    payload.email = email;
+    payload.email_confirm = true; // sin flujo de confirmación: lo damos por verificado
+  }
+  if (password && password.length >= 6) payload.password = password;
+  if (nombre && nombre !== meta.nombre) payload.app_metadata = { ...meta, nombre };
+
+  if (Object.keys(payload).length === 0) return; // nada que cambiar
+  const { error } = await admin.auth.admin.updateUserById(id, payload);
+  if (error) throw new Error("updateVendedorCredenciales: " + error.message);
+}
+
 export async function updateVendedorCuentasAction(id: string, cuentas: string[]): Promise<void> {
   requireAdmin(await requireUser());
   const admin = createSupabaseAdminClient();

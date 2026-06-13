@@ -10,6 +10,7 @@ import {
   listVendedoresAction,
   runRecordatoriosAction,
   runResumenAdminAction,
+  updateVendedorCredencialesAction,
   updateVendedorCuentasAction,
 } from "@/app/actions";
 import type { VendedorInfo } from "@/lib/types";
@@ -25,6 +26,52 @@ export function VendedoresPanel() {
   const [nuevasCuentas, setNuevasCuentas] = useState<string[]>([]);
   const [jobBusy, setJobBusy] = useState("");
   const [jobLog, setJobLog] = useState<string[]>([]);
+  // Edición de credenciales (un vendedor a la vez).
+  const [editId, setEditId] = useState<string | null>(null);
+  const [edNombre, setEdNombre] = useState("");
+  const [edEmail, setEdEmail] = useState("");
+  const [edPassword, setEdPassword] = useState("");
+  const [edBusy, setEdBusy] = useState(false);
+  const [edMsg, setEdMsg] = useState("");
+
+  function abrirEdicion(v: VendedorInfo) {
+    setEditId(v.id);
+    setEdNombre(v.nombre);
+    setEdEmail(v.email);
+    setEdPassword("");
+    setEdMsg("");
+  }
+  function cancelarEdicion() {
+    setEditId(null);
+    setEdMsg("");
+  }
+  async function guardarEdicion(e: FormEvent) {
+    e.preventDefault();
+    if (!editId) return;
+    if (!edNombre.trim() || !edEmail.trim()) {
+      setEdMsg("Nombre y correo no pueden quedar vacíos.");
+      return;
+    }
+    if (edPassword && edPassword.length < 6) {
+      setEdMsg("La nueva contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
+    setEdBusy(true);
+    setEdMsg("");
+    try {
+      await updateVendedorCredencialesAction(editId, {
+        nombre: edNombre,
+        email: edEmail,
+        password: edPassword || undefined,
+      });
+      setEditId(null);
+      setMsg("✓ Credenciales actualizadas.");
+      await refresh();
+    } catch {
+      setEdMsg("No se pudo actualizar (¿el correo ya está en uso?).");
+    }
+    setEdBusy(false);
+  }
 
   async function correrJob(tipo: "recordatorios" | "resumen") {
     setJobBusy(tipo);
@@ -171,20 +218,57 @@ export function VendedoresPanel() {
         ) : (
           <div className="vend-list">
             {vendedores.map((v) => (
-              <div key={v.id} className="vend-row">
-                <div className="vend-ident">
-                  <span className="vend-num">#{fmtVendedorNum(v.num)}</span>
-                  <div>
-                    <div className="vend-nombre">{v.nombre}</div>
-                    <div className="vend-email">{v.email}</div>
+              <div key={v.id} className="vend-item">
+                <div className="vend-row">
+                  <div className="vend-ident">
+                    <span className="vend-num">#{fmtVendedorNum(v.num)}</span>
+                    <div>
+                      <div className="vend-nombre">{v.nombre}</div>
+                      <div className="vend-email">{v.email}</div>
+                    </div>
+                  </div>
+                  <div className="vend-chips">
+                    {CUENTAS.map((c) => chip(c.key, v.cuentas.includes(c.key), c.brand, c.nombreCorto, () => toggleCuenta(v, c.key)))}
+                  </div>
+                  <div className="vend-actions">
+                    <button className="btn" onClick={() => (editId === v.id ? cancelarEdicion() : abrirEdicion(v))}>
+                      {editId === v.id ? "Cerrar" : "Editar"}
+                    </button>
+                    <button className="btn btn-danger" onClick={() => eliminar(v)}>
+                      Eliminar
+                    </button>
                   </div>
                 </div>
-                <div className="vend-chips">
-                  {CUENTAS.map((c) => chip(c.key, v.cuentas.includes(c.key), c.brand, c.nombreCorto, () => toggleCuenta(v, c.key)))}
-                </div>
-                <button className="btn btn-danger" onClick={() => eliminar(v)}>
-                  Eliminar
-                </button>
+                {editId === v.id && (
+                  <form className="vend-edit" onSubmit={guardarEdicion}>
+                    <div className="fld">
+                      <label>Nombre</label>
+                      <input value={edNombre} onChange={(e) => setEdNombre(e.target.value)} placeholder="Nombre y apellido" />
+                    </div>
+                    <div className="fld">
+                      <label>Correo (usuario de acceso)</label>
+                      <input type="email" value={edEmail} onChange={(e) => setEdEmail(e.target.value)} placeholder="vendedor@norbotgroup.com" />
+                    </div>
+                    <div className="fld full">
+                      <label>Nueva contraseña</label>
+                      <input
+                        type="text"
+                        value={edPassword}
+                        onChange={(e) => setEdPassword(e.target.value)}
+                        placeholder="dejar vacío para no cambiarla"
+                      />
+                    </div>
+                    <div className="vend-edit-actions">
+                      {edMsg && <span className="vend-edit-msg">{edMsg}</span>}
+                      <button type="button" className="btn" onClick={cancelarEdicion} disabled={edBusy}>
+                        Cancelar
+                      </button>
+                      <button type="submit" className="btn btn-primary" disabled={edBusy}>
+                        {edBusy ? "Guardando…" : "Guardar cambios"}
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
             ))}
             {vendedores.length === 0 && <div className="col-empty">— aún no hay vendedores —</div>}

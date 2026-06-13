@@ -541,3 +541,14 @@ body {
 /* Jobs de correo (panel de vendedores) */
 .job-btns { display: flex; gap: 10px; flex-wrap: wrap; }
 .job-log { margin-top: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); padding: 10px 12px; font-size: 12px; color: var(--ink-soft); display: flex; flex-direction: column; gap: 3px; max-height: 200px; overflow-y: auto; }
+
+/* Edición de credenciales del vendedor (admin) */
+.vend-item { display: flex; flex-direction: column; }
+.vend-actions { display: flex; gap: 8px; }
+.vend-edit { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; margin-top: 8px; padding: 14px; border: 1px dashed var(--accent); border-radius: 12px; background: var(--paper); }
+.vend-edit .fld { display: flex; flex-direction: column; gap: 5px; }
+.vend-edit .fld.full { grid-column: 1 / -1; }
+.vend-edit label { font-size: 11px; font-weight: 600; color: var(--muted); }
+.vend-edit-actions { grid-column: 1 / -1; display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
+.vend-edit-actions .vend-edit-msg { margin-right: auto; font-size: 12px; color: var(--ink-soft); }
+@media (max-width: 760px) { .vend-edit { grid-template-columns: 1fr; } }
