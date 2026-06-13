@@ -23,7 +23,7 @@ import {
 } from "@/lib/mappers";
 import { normalizeEtapa } from "@/lib/data";
 import { fetchVendedores } from "@/lib/vendedores";
-import { sendEmail, tplNuevoLead } from "@/lib/email";
+import { sendEmail, tplNuevoLead, tplReasignacion } from "@/lib/email";
 import { runRecordatorios, runResumenAdmin, type JobResult } from "@/lib/email-jobs";
 import type {
   Campana,
@@ -335,11 +335,74 @@ export async function updateVendedorCuentasAction(id: string, cuentas: string[])
   if (error) throw new Error("updateVendedor: " + error.message);
 }
 
-export async function deleteVendedorAction(id: string): Promise<void> {
+export interface DeleteVendedorResult {
+  eliminado: boolean;
+  reasignados: number;
+  sinAsignar: number;
+  notificados: number;
+}
+
+/**
+ * Da de baja a un vendedor. Antes de borrarlo, reasigna sus leads (conservando su
+ * etapa en el pipeline) en round-robin entre los demás vendedores con acceso a la
+ * misma cuenta, y notifica por correo a cada nuevo dueño. Los leads de una cuenta
+ * sin otro vendedor disponible quedan sin asignar (vendedor = null).
+ */
+export async function deleteVendedorAction(id: string): Promise<DeleteVendedorResult> {
   requireAdmin(await requireUser());
   const admin = createSupabaseAdminClient();
+
+  // 1. Leads del vendedor a eliminar (se conserva su etapa actual).
+  const { data: rows } = await admin.from("leads").select("*").eq("vendedor", id);
+  const leads = (rows ?? []).map(rowToLead);
+
+  // 2. Reparto round-robin por cuenta entre los vendedores restantes.
+  const otros = (await fetchVendedores(admin)).filter((v) => v.id !== id);
+  const rr: Record<string, number> = {};
+  const porDueno = new Map<string, { v: VendedorInfo; leads: Lead[] }>();
+  const sinAsignar: Lead[] = [];
+  for (const lead of leads) {
+    const candidatos = otros.filter((v) => v.cuentas.includes(lead.cuenta));
+    if (!candidatos.length) {
+      sinAsignar.push(lead);
+      continue;
+    }
+    const i = (rr[lead.cuenta] ?? 0) % candidatos.length;
+    rr[lead.cuenta] = (rr[lead.cuenta] ?? 0) + 1;
+    const nuevo = candidatos[i];
+    const bucket = porDueno.get(nuevo.id) ?? { v: nuevo, leads: [] };
+    bucket.leads.push(lead);
+    porDueno.set(nuevo.id, bucket);
+  }
+
+  // 3. Aplicar la reasignación en la BD (solo cambia el dueño, no la etapa).
+  for (const { v, leads: ls } of porDueno.values()) {
+    check(await admin.from("leads").update({ vendedor: v.id }).in("id", ls.map((l) => l.id)), "reasignar leads");
+  }
+  if (sinAsignar.length) {
+    check(await admin.from("leads").update({ vendedor: null }).in("id", sinAsignar.map((l) => l.id)), "leads sin dueño");
+  }
+
+  // 4. Eliminar el usuario (ya sin leads colgando).
   const { error } = await admin.auth.admin.deleteUser(id);
   if (error) throw new Error("deleteVendedor: " + error.message);
+
+  // 5. Notificar por correo a cada nuevo dueño (best-effort: nunca bloquea la baja).
+  let notificados = 0;
+  for (const { v, leads: ls } of porDueno.values()) {
+    try {
+      const res = await sendEmail(
+        v.email,
+        `Se te reasignaron ${ls.length} lead${ls.length === 1 ? "" : "s"}`,
+        tplReasignacion(v.nombre, v.num, ls.map((l) => ({ nombre: l.nombre, cuenta: l.cuenta, etapa: l.etapa }))),
+      );
+      if (res.ok) notificados++;
+    } catch {
+      // ignorar fallos de correo
+    }
+  }
+
+  return { eliminado: true, reasignados: leads.length - sinAsignar.length, sinAsignar: sinAsignar.length, notificados };
 }
 
 /* ─────────────────── correos: disparo manual (solo admin) ─────────────────── */

@@ -137,10 +137,21 @@ export function VendedoresPanel() {
   }
 
   async function eliminar(v: VendedorInfo) {
-    if (!confirm(`¿Eliminar al vendedor ${v.email}? Esta acción no se puede deshacer.`)) return;
+    if (
+      !confirm(
+        `¿Eliminar al vendedor ${v.email}? Sus leads se reasignarán automáticamente a otros vendedores con acceso a la misma cuenta (se les notificará por correo). Esta acción no se puede deshacer.`,
+      )
+    )
+      return;
     setVendedores((xs) => xs.filter((x) => x.id !== v.id));
     try {
-      await deleteVendedorAction(v.id);
+      const r = await deleteVendedorAction(v.id);
+      const partes: string[] = [];
+      if (r.reasignados) partes.push(`${r.reasignados} lead(s) reasignado(s)`);
+      if (r.sinAsignar) partes.push(`${r.sinAsignar} sin vendedor con acceso (quedaron sin asignar)`);
+      if (r.notificados) partes.push(`${r.notificados} notificado(s) por correo`);
+      setMsg(`✓ Vendedor eliminado${partes.length ? " · " + partes.join(" · ") : ""}.`);
+      await refresh();
     } catch {
       setMsg("No se pudo eliminar.");
       refresh();

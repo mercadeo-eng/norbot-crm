@@ -132,6 +132,34 @@ export function tplRecordatorio(vendedorNombre: string, leads: LeadEstancado[]):
   return layoutEmail(`Tienes ${leads.length} lead${leads.length === 1 ? "" : "s"} sin movimiento`, cuerpo);
 }
 
+export interface LeadReasignado {
+  nombre: string;
+  cuenta: string;
+  etapa: string;
+}
+
+/** Correo: leads reasignados a un vendedor (porque el dueño anterior fue dado de baja). */
+export function tplReasignacion(vendedorNombre: string, vendedorNum: number, leads: LeadReasignado[]): string {
+  const filas = leads
+    .map(
+      (l) =>
+        `<tr>
+          <td style="padding:6px 10px 6px 0;color:#1e293b;font-size:13px;font-weight:600;">${esc(l.nombre)}</td>
+          <td style="padding:6px 10px 6px 0;color:#475569;font-size:12px;">${esc(CUENTA_BY_KEY[l.cuenta]?.nombreCorto ?? l.cuenta)}</td>
+          <td style="padding:6px 0;"><span style="background:#eef2ff;color:#4f46e5;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;">${esc(ETAPA_BY_KEY[l.etapa]?.title ?? l.etapa)}</span></td>
+        </tr>`,
+    )
+    .join("");
+  const cuerpo = `
+    <p style="margin:0 0 14px;color:#475569;font-size:13.5px;line-height:1.55;">
+      Hola <strong>${esc(vendedorNombre)}</strong> (#${fmtVendedorNum(vendedorNum)}): se te reasignaron
+      <strong>${leads.length} lead${leads.length === 1 ? "" : "s"}</strong> porque el vendedor anterior fue dado de baja.
+      Conservan su etapa actual en el pipeline; dales seguimiento cuanto antes.
+    </p>
+    <table style="border-collapse:collapse;width:100%;">${filas}</table>`;
+  return layoutEmail(`Se te reasignaron ${leads.length} lead${leads.length === 1 ? "" : "s"}`, cuerpo);
+}
+
 export interface ResumenVendedor {
   nombre: string;
   num: number;
