@@ -12,12 +12,13 @@ interface LeadModalProps {
   vendedores: VendedorInfo[];
   onClose: () => void;
   onSave: (patch: Partial<Lead>) => void;
+  onReassign: (vendedorId: string | null) => void;
   onDelete: () => void;
 }
 
 const etapaTitle = (key: string | null) => (key ? ETAPA_BY_KEY[key]?.title ?? key : null);
 
-export function LeadModal({ lead, isAdmin, vendedores, onClose, onSave, onDelete }: LeadModalProps) {
+export function LeadModal({ lead, isAdmin, vendedores, onClose, onSave, onReassign, onDelete }: LeadModalProps) {
   const [form, setForm] = useState({
     etapa: lead.etapa,
     notas: lead.notas,
@@ -82,15 +83,17 @@ export function LeadModal({ lead, isAdmin, vendedores, onClose, onSave, onDelete
           {isAdmin && (
             <div className="fld">
               <label>Vendedor asignado</label>
-              {vendedorAsignado ? (
-                <div className="vend-asignado">
-                  <span className="vend-num">#{fmtVendedorNum(vendedorAsignado.num)}</span>
-                  <span className="vend-nombre">{vendedorAsignado.nombre}</span>
-                  <span className="vend-mail">{vendedorAsignado.email}</span>
-                </div>
-              ) : (
-                <div className="vend-asignado sin">— sin asignar —</div>
-              )}
+              <select value={lead.vendedor ?? ""} onChange={(e) => onReassign(e.target.value || null)}>
+                <option value="">— sin asignar —</option>
+                {vendedores.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    #{fmtVendedorNum(v.num)} · {v.nombre}
+                  </option>
+                ))}
+              </select>
+              <div className="vend-mail" style={{ marginTop: 4 }}>
+                {vendedorAsignado ? vendedorAsignado.email : "Cambiar aquí reasigna el lead y notifica por correo a los afectados."}
+              </div>
             </div>
           )}
           <div className="fld">

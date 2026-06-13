@@ -160,6 +160,32 @@ export function tplReasignacion(vendedorNombre: string, vendedorNum: number, lea
   return layoutEmail(`Se te reasignaron ${leads.length} lead${leads.length === 1 ? "" : "s"}`, cuerpo);
 }
 
+/** Correo: aviso de cambio manual de asignación de un lead (hecho por el admin). */
+export function tplCambioAsignacion(
+  vendedorNombre: string,
+  vendedorNum: number,
+  lead: LeadReasignado,
+  tipo: "asignado" | "retirado",
+): string {
+  const cuenta = CUENTA_BY_KEY[lead.cuenta]?.nombreCorto ?? lead.cuenta;
+  const etapa = ETAPA_BY_KEY[lead.etapa]?.title ?? lead.etapa;
+  const tabla = `
+    <table style="border-collapse:collapse;">
+      ${filaDato("Lead", lead.nombre)}
+      ${filaDato("Cuenta", cuenta)}
+      ${filaDato("Etapa actual", etapa)}
+    </table>`;
+  const intro =
+    tipo === "asignado"
+      ? "el administrador te asignó este lead. Conserva su etapa actual; dale seguimiento cuanto antes."
+      : "el administrador reasignó este lead a otro vendedor, por lo que ya no está en tu cartera.";
+  const cuerpo = `
+    <p style="margin:0 0 14px;color:#475569;font-size:13.5px;line-height:1.55;">
+      Hola <strong>${esc(vendedorNombre)}</strong> (#${fmtVendedorNum(vendedorNum)}): ${intro}
+    </p>${tabla}`;
+  return layoutEmail(tipo === "asignado" ? "Se te asignó un lead" : "Un lead salió de tu cartera", cuerpo);
+}
+
 export interface ResumenVendedor {
   nombre: string;
   num: number;

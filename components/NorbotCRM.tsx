@@ -10,6 +10,7 @@ import {
   deleteLeadAction,
   importTableAction,
   moveLeadAction,
+  reassignLeadAction,
   restoreDemoAction,
   updateLeadAction,
 } from "@/app/actions";
@@ -177,6 +178,20 @@ export default function NorbotCRM({
     } catch {
       setLeads(prev);
       showToast("⚠ No se pudieron guardar los cambios");
+    }
+  }
+  async function reassignLead(id: string, vendedorId: string | null) {
+    const lead = leads.find((l) => l.id === id);
+    if (!lead || (lead.vendedor ?? null) === vendedorId) return;
+    const prev = leads;
+    setLeads((xs) => xs.map((l) => (l.id === id ? { ...l, vendedor: vendedorId } : l)));
+    const nuevo = vendedorId ? vendedores.find((v) => v.id === vendedorId) : null;
+    showToast(nuevo ? `Reasignado a ${nuevo.nombre}` : "Lead sin asignar");
+    try {
+      await reassignLeadAction(id, vendedorId);
+    } catch {
+      setLeads(prev);
+      showToast("⚠ No se pudo reasignar");
     }
   }
   async function deleteLead(id: string) {
@@ -502,6 +517,7 @@ export default function NorbotCRM({
             updateLead(selectedLead.id, patch);
             showToast("Cambios guardados");
           }}
+          onReassign={(vendedorId) => reassignLead(selectedLead.id, vendedorId)}
           onDelete={() => deleteLead(selectedLead.id)}
         />
       )}

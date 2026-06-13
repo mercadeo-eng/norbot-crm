@@ -23,7 +23,7 @@ import {
 } from "@/lib/mappers";
 import { normalizeEtapa } from "@/lib/data";
 import { fetchVendedores } from "@/lib/vendedores";
-import { sendEmail, tplNuevoLead, tplReasignacion } from "@/lib/email";
+import { sendEmail, tplCambioAsignacion, tplNuevoLead, tplReasignacion } from "@/lib/email";
 import { runRecordatorios, runResumenAdmin, type JobResult } from "@/lib/email-jobs";
 import type {
   Campana,
@@ -185,6 +185,41 @@ export async function getLeadHistorialAction(leadId: string): Promise<LeadHistor
     return (data ?? []).map(rowToHistorial);
   } catch {
     return [];
+  }
+}
+
+/**
+ * Reasignación manual del vendedor de un lead (solo admin). Cambia el dueño (o lo
+ * deja sin asignar con null) conservando la etapa, y notifica por correo a los
+ * vendedores afectados: al nuevo dueño ("se te asignó") y al anterior ("salió de
+ * tu cartera").
+ */
+export async function reassignLeadAction(leadId: string, nuevoVendedorId: string | null): Promise<void> {
+  requireAdmin(await requireUser());
+  const admin = createSupabaseAdminClient();
+
+  const { data: row } = await admin.from("leads").select("*").eq("id", leadId).maybeSingle();
+  if (!row) throw new Error("reassignLead: lead no encontrado");
+  const lead = rowToLead(row);
+  const anterior = lead.vendedor ?? null;
+  if (anterior === nuevoVendedorId) return; // sin cambios
+
+  check(await admin.from("leads").update({ vendedor: nuevoVendedorId }).eq("id", leadId), "reassignLead");
+
+  // Notificar a los afectados (best-effort: el correo nunca bloquea la reasignación).
+  const vendedores = await fetchVendedores(admin);
+  const datos = { nombre: lead.nombre, cuenta: lead.cuenta, etapa: lead.etapa };
+  const nuevo = nuevoVendedorId ? vendedores.find((v) => v.id === nuevoVendedorId) : null;
+  const previo = anterior ? vendedores.find((v) => v.id === anterior) : null;
+  try {
+    if (nuevo) {
+      await sendEmail(nuevo.email, `Se te asignó un lead: ${lead.nombre}`, tplCambioAsignacion(nuevo.nombre, nuevo.num, datos, "asignado"));
+    }
+    if (previo) {
+      await sendEmail(previo.email, `Un lead salió de tu cartera: ${lead.nombre}`, tplCambioAsignacion(previo.nombre, previo.num, datos, "retirado"));
+    }
+  } catch {
+    // ignorar fallos de correo
   }
 }
 
