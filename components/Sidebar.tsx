@@ -57,6 +57,15 @@ export function Sidebar({ page, onNavigate, leads, realData, userEmail, isAdmin,
             <span>Vendedores</span>
           </button>
         )}
+        {isAdmin && (
+          <button
+            onClick={() => onNavigate("tokens")}
+            className={`nav-btn ${page === "tokens" ? "active" : ""}`}
+          >
+            <span className="nav-icon">◔</span>
+            <span>Uso de tokens</span>
+          </button>
+        )}
 
         {cuentaOptions.length > 0 && (
           <div className="nav-section">

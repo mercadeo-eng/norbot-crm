@@ -12,6 +12,8 @@ import {
   runResumenAdminAction,
   updateVendedorCredencialesAction,
   updateVendedorCuentasAction,
+  updateVendedorPerfilAction,
+  uploadVendedorFotoAction,
 } from "@/app/actions";
 import type { VendedorInfo } from "@/lib/types";
 
@@ -33,13 +35,44 @@ export function VendedoresPanel() {
   const [edPassword, setEdPassword] = useState("");
   const [edBusy, setEdBusy] = useState(false);
   const [edMsg, setEdMsg] = useState("");
+  // Perfil (#4)
+  const [edSexo, setEdSexo] = useState("");
+  const [edCedula, setEdCedula] = useState("");
+  const [edDomicilio, setEdDomicilio] = useState("");
+  const [edTelefono, setEdTelefono] = useState("");
+  const [edTelefono2, setEdTelefono2] = useState("");
+  const [edFoto, setEdFoto] = useState("");
+  const [edUploading, setEdUploading] = useState(false);
 
   function abrirEdicion(v: VendedorInfo) {
     setEditId(v.id);
     setEdNombre(v.nombre);
     setEdEmail(v.email);
     setEdPassword("");
+    const p = v.perfil ?? {};
+    setEdSexo(p.sexo ?? "");
+    setEdCedula(p.cedula ?? "");
+    setEdDomicilio(p.domicilio ?? "");
+    setEdTelefono(p.telefono ?? "");
+    setEdTelefono2(p.telefono2 ?? "");
+    setEdFoto(p.foto ?? "");
     setEdMsg("");
+  }
+
+  async function subirFoto(file: File) {
+    if (!editId) return;
+    setEdUploading(true);
+    setEdMsg("");
+    try {
+      const fd = new FormData();
+      fd.append("foto", file);
+      const url = await uploadVendedorFotoAction(editId, fd);
+      setEdFoto(url);
+      setVendedores((xs) => xs.map((x) => (x.id === editId ? { ...x, perfil: { ...(x.perfil ?? {}), foto: url } } : x)));
+    } catch {
+      setEdMsg("No se pudo subir la foto (máx 6 MB, solo imágenes).");
+    }
+    setEdUploading(false);
   }
   function cancelarEdicion() {
     setEditId(null);
@@ -64,8 +97,15 @@ export function VendedoresPanel() {
         email: edEmail,
         password: edPassword || undefined,
       });
+      await updateVendedorPerfilAction(editId, {
+        sexo: edSexo,
+        cedula: edCedula,
+        domicilio: edDomicilio,
+        telefono: edTelefono,
+        telefono2: edTelefono2,
+      });
       setEditId(null);
-      setMsg("✓ Credenciales actualizadas.");
+      setMsg("✓ Vendedor actualizado.");
       await refresh();
     } catch {
       setEdMsg("No se pudo actualizar (¿el correo ya está en uso?).");
@@ -232,6 +272,14 @@ export function VendedoresPanel() {
               <div key={v.id} className="vend-item">
                 <div className="vend-row">
                   <div className="vend-ident">
+                    <span className="vend-avatar">
+                      {v.perfil?.foto ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={v.perfil.foto} alt={v.nombre} />
+                      ) : (
+                        (v.nombre || "?").trim().charAt(0).toUpperCase()
+                      )}
+                    </span>
                     <span className="vend-num">#{fmtVendedorNum(v.num)}</span>
                     <div>
                       <div className="vend-nombre">{v.nombre}</div>
@@ -268,6 +316,52 @@ export function VendedoresPanel() {
                         onChange={(e) => setEdPassword(e.target.value)}
                         placeholder="dejar vacío para no cambiarla"
                       />
+                    </div>
+                    <div className="fld">
+                      <label>Sexo</label>
+                      <select value={edSexo} onChange={(e) => setEdSexo(e.target.value)}>
+                        <option value="">— sin definir —</option>
+                        <option value="F">Femenino</option>
+                        <option value="M">Masculino</option>
+                        <option value="Otro">Otro</option>
+                      </select>
+                    </div>
+                    <div className="fld">
+                      <label>Cédula</label>
+                      <input value={edCedula} onChange={(e) => setEdCedula(e.target.value)} placeholder="0-000-0000" />
+                    </div>
+                    <div className="fld">
+                      <label>Teléfono</label>
+                      <input value={edTelefono} onChange={(e) => setEdTelefono(e.target.value)} placeholder="+507 6000-0000" />
+                    </div>
+                    <div className="fld">
+                      <label>Teléfono 2 (opcional)</label>
+                      <input value={edTelefono2} onChange={(e) => setEdTelefono2(e.target.value)} placeholder="opcional" />
+                    </div>
+                    <div className="fld full">
+                      <label>Domicilio</label>
+                      <input value={edDomicilio} onChange={(e) => setEdDomicilio(e.target.value)} placeholder="Dirección de residencia" />
+                    </div>
+                    <div className="fld full">
+                      <label>Foto de perfil</label>
+                      <div className="vend-foto-row">
+                        {edFoto ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img className="vend-foto-prev" src={edFoto} alt="foto" />
+                        ) : (
+                          <span className="vend-foto-prev empty">sin foto</span>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          disabled={edUploading}
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) subirFoto(f);
+                          }}
+                        />
+                        {edUploading && <span className="vend-mail">Subiendo…</span>}
+                      </div>
                     </div>
                     <div className="vend-edit-actions">
                       {edMsg && <span className="vend-edit-msg">{edMsg}</span>}

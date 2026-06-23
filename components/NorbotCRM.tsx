@@ -26,6 +26,8 @@ import { LeadModal } from "./LeadModal";
 import { NewLeadModal } from "./NewLeadModal";
 import { ImportModal } from "./ImportModal";
 import { VendedoresPanel } from "./VendedoresPanel";
+import { AdminsPanel } from "./AdminsPanel";
+import { TokenUsagePanel } from "./TokenUsagePanel";
 
 type NewLeadData = Omit<Lead, "id" | "etapa" | "fechaIngreso">;
 
@@ -340,10 +342,20 @@ export default function NorbotCRM({
         eyebrow: "Administración",
         title: (
           <>
-            Gestión de <em>vendedores</em>
+            Gestión de <em>equipo</em>
           </>
         ),
-        sub: "Accesos y cuentas por vendedor",
+        sub: "Vendedores, perfiles y administradores",
+      };
+    if (page === "tokens")
+      return {
+        eyebrow: "Administración · IA",
+        title: (
+          <>
+            Uso de <em>tokens</em>
+          </>
+        ),
+        sub: "Consumo de la API de Claude (bot de WhatsApp)",
       };
     if (page.startsWith("cuenta:")) {
       const c = CUENTA_BY_KEY[page.split(":")[1]];
@@ -503,7 +515,13 @@ export default function NorbotCRM({
               }}
             />
           )}
-          {page === "vendedores" && isAdmin && <VendedoresPanel />}
+          {page === "vendedores" && isAdmin && (
+            <>
+              <VendedoresPanel />
+              <AdminsPanel userEmail={userEmail} />
+            </>
+          )}
+          {page === "tokens" && isAdmin && <TokenUsagePanel />}
         </main>
       </div>
 

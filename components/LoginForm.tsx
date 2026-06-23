@@ -9,6 +9,7 @@ export function LoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -57,13 +58,23 @@ export function LoginForm() {
           </div>
           <div className="fld">
             <label>Contraseña</label>
-            <input
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+            <div className="pw-field">
+              <input
+                type={showPw ? "text" : "password"}
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <button
+                type="button"
+                className="pw-toggle"
+                onClick={() => setShowPw((s) => !s)}
+                aria-label={showPw ? "Ocultar contraseña" : "Mostrar contraseña"}
+              >
+                {showPw ? "Ocultar" : "Ver"}
+              </button>
+            </div>
           </div>
           {error && <div className="login-error">{error}</div>}
           <button className="btn btn-primary login-btn" type="submit" disabled={loading}>

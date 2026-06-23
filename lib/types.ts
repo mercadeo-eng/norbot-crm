@@ -104,6 +104,16 @@ export interface ImportFlags {
   posts: boolean;
 }
 
+/** Datos opcionales de registro del vendedor (viven en app_metadata.perfil). */
+export interface VendedorPerfil {
+  sexo?: string; // "F" | "M" | "Otro" | ""
+  cedula?: string;
+  domicilio?: string;
+  telefono?: string;
+  telefono2?: string;
+  foto?: string; // URL pública (Supabase Storage)
+}
+
 export interface VendedorInfo {
   id: string;
   email: string;
@@ -111,6 +121,40 @@ export interface VendedorInfo {
   /** Número secuencial del vendedor (se muestra como 4 dígitos: 0001, 0002…). */
   num: number;
   cuentas: string[];
+  /** Registro opcional (foto, sexo, domicilio, teléfonos…). */
+  perfil?: VendedorPerfil;
+}
+
+/** Usuario administrador (rol admin). */
+export interface AdminInfo {
+  id: string;
+  email: string;
+  nombre: string;
+}
+
+/** Resumen de uso de tokens de la API de Claude (bot de WhatsApp). */
+export interface TokenUsoModelo {
+  modelo: string;
+  input: number;
+  output: number;
+  mensajes: number;
+}
+export interface TokenUsoReciente {
+  createdAt: string;
+  telefono: string;
+  modelo: string;
+  input: number;
+  output: number;
+}
+export interface TokenUsoResumen {
+  /** true si la tabla token_usage existe y respondió (aunque tenga 0 filas). */
+  activo: boolean;
+  totalInput: number;
+  totalOutput: number;
+  totalCosto: number;
+  mensajes: number;
+  porModelo: TokenUsoModelo[];
+  recientes: TokenUsoReciente[];
 }
 
 export interface LeadHistorialEntry {

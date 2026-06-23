@@ -26,13 +26,17 @@ import { fetchVendedores } from "@/lib/vendedores";
 import { sendEmail, tplCambioAsignacion, tplNuevoLead, tplReasignacion } from "@/lib/email";
 import { runRecordatorios, runResumenAdmin, type JobResult } from "@/lib/email-jobs";
 import type {
+  AdminInfo,
   Campana,
   ImportTipo,
   Lead,
   LeadHistorialEntry,
   Metrica,
   PostsByCuenta,
+  TokenUsoModelo,
+  TokenUsoResumen,
   VendedorInfo,
+  VendedorPerfil,
 } from "@/lib/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -438,6 +442,150 @@ export async function deleteVendedorAction(id: string): Promise<DeleteVendedorRe
   }
 
   return { eliminado: true, reasignados: leads.length - sinAsignar.length, sinAsignar: sinAsignar.length, notificados };
+}
+
+/* ─────────────────── perfil del vendedor (solo admin) ─────────────────── */
+/** Actualiza el registro del vendedor (datos opcionales) en app_metadata.perfil. */
+export async function updateVendedorPerfilAction(id: string, perfil: VendedorPerfil): Promise<void> {
+  requireAdmin(await requireUser());
+  const admin = createSupabaseAdminClient();
+  const { data: current, error: getErr } = await admin.auth.admin.getUserById(id);
+  if (getErr || !current?.user) throw new Error("updateVendedorPerfil: usuario no encontrado");
+  const meta = (current.user.app_metadata ?? {}) as Record<string, unknown>;
+  const limpio: VendedorPerfil = { ...((meta.perfil ?? {}) as VendedorPerfil) };
+  (["sexo", "cedula", "domicilio", "telefono", "telefono2", "foto"] as const).forEach((k) => {
+    const v = perfil[k];
+    if (v === undefined) return;
+    if (v.trim()) limpio[k] = v.trim();
+    else delete limpio[k];
+  });
+  const { error } = await admin.auth.admin.updateUserById(id, { app_metadata: { ...meta, perfil: limpio } });
+  if (error) throw new Error("updateVendedorPerfil: " + error.message);
+}
+
+/** Sube la foto de perfil a Supabase Storage (bucket "vendedores") y guarda su URL pública. */
+export async function uploadVendedorFotoAction(id: string, formData: FormData): Promise<string> {
+  requireAdmin(await requireUser());
+  const admin = createSupabaseAdminClient();
+  const file = formData.get("foto");
+  if (!(file instanceof File) || !file.size) throw new Error("uploadVendedorFoto: archivo inválido");
+  if (!file.type.startsWith("image/")) throw new Error("uploadVendedorFoto: debe ser una imagen");
+  if (file.size > 5 * 1024 * 1024) throw new Error("uploadVendedorFoto: la imagen supera 5 MB");
+
+  const path = `${id}/perfil`;
+  const buffer = new Uint8Array(await file.arrayBuffer());
+  const up = await admin.storage.from("vendedores").upload(path, buffer, { contentType: file.type, upsert: true });
+  if (up.error) throw new Error("uploadVendedorFoto: " + up.error.message);
+  const { data: pub } = admin.storage.from("vendedores").getPublicUrl(path);
+  const url = `${pub.publicUrl}?v=${Date.now()}`; // cache-busting al re-subir
+
+  const { data: current } = await admin.auth.admin.getUserById(id);
+  const meta = (current?.user?.app_metadata ?? {}) as Record<string, unknown>;
+  const prev = (meta.perfil ?? {}) as VendedorPerfil;
+  const { error } = await admin.auth.admin.updateUserById(id, { app_metadata: { ...meta, perfil: { ...prev, foto: url } } });
+  if (error) throw new Error("uploadVendedorFoto: " + error.message);
+  return url;
+}
+
+/* ─────────────────── administradores (solo admin) ─────────────────── */
+export async function listAdminsAction(): Promise<AdminInfo[]> {
+  requireAdmin(await requireUser());
+  const admin = createSupabaseAdminClient();
+  const { data, error } = await admin.auth.admin.listUsers({ perPage: 1000 });
+  if (error) throw new Error("listAdmins: " + error.message);
+  return data.users
+    .filter((u) => ((u.app_metadata ?? {}) as { role?: string }).role !== "vendedor")
+    .map((u) => ({
+      id: u.id,
+      email: u.email ?? "",
+      nombre: ((u.app_metadata ?? {}) as { nombre?: string }).nombre || (u.email ?? "").split("@")[0],
+    }))
+    .sort((a, b) => a.email.localeCompare(b.email));
+}
+
+export async function createAdminAction(email: string, password: string, nombre: string): Promise<void> {
+  requireAdmin(await requireUser());
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.auth.admin.createUser({
+    email: email.trim().toLowerCase(),
+    password,
+    email_confirm: true,
+    app_metadata: { role: "admin", nombre: nombre.trim() },
+  });
+  if (error) throw new Error("createAdmin: " + error.message);
+}
+
+export async function deleteAdminAction(id: string): Promise<void> {
+  const session = await requireUser();
+  requireAdmin(session);
+  if (session.userId === id) throw new Error("No puedes eliminar tu propio usuario.");
+  const actuales = await listAdminsAction();
+  if (actuales.length <= 1) throw new Error("Debe quedar al menos un administrador.");
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.auth.admin.deleteUser(id);
+  if (error) throw new Error("deleteAdmin: " + error.message);
+}
+
+/* ─────────────────── uso de tokens (Claude · bot WhatsApp) ─────────────────── */
+/**
+ * Resumen de uso de tokens de la API de Claude. Lee de la tabla `token_usage` (que
+ * llenará el futuro bot de WhatsApp). Degrada a vacío si la tabla aún no existe.
+ */
+export async function getTokenUsageAction(): Promise<TokenUsoResumen> {
+  requireAdmin(await requireUser());
+  const admin = createSupabaseAdminClient();
+  const vacio: TokenUsoResumen = {
+    activo: false,
+    totalInput: 0,
+    totalOutput: 0,
+    totalCosto: 0,
+    mensajes: 0,
+    porModelo: [],
+    recientes: [],
+  };
+  try {
+    const { data, error } = await admin
+      .from("token_usage")
+      .select("created_at, telefono, modelo, input_tokens, output_tokens, costo_usd")
+      .order("created_at", { ascending: false })
+      .limit(2000);
+    if (error) return vacio;
+    const rows = data ?? [];
+    let totalInput = 0;
+    let totalOutput = 0;
+    let totalCosto = 0;
+    const porModelo = new Map<string, TokenUsoModelo>();
+    for (const r of rows) {
+      const inp = Number(r.input_tokens) || 0;
+      const out = Number(r.output_tokens) || 0;
+      totalInput += inp;
+      totalOutput += out;
+      totalCosto += Number(r.costo_usd) || 0;
+      const modelo = String(r.modelo || "—");
+      const m = porModelo.get(modelo) ?? { modelo, input: 0, output: 0, mensajes: 0 };
+      m.input += inp;
+      m.output += out;
+      m.mensajes += 1;
+      porModelo.set(modelo, m);
+    }
+    return {
+      activo: true,
+      totalInput,
+      totalOutput,
+      totalCosto,
+      mensajes: rows.length,
+      porModelo: [...porModelo.values()].sort((a, b) => b.input + b.output - (a.input + a.output)),
+      recientes: rows.slice(0, 20).map((r) => ({
+        createdAt: String(r.created_at),
+        telefono: String(r.telefono || ""),
+        modelo: String(r.modelo || "—"),
+        input: Number(r.input_tokens) || 0,
+        output: Number(r.output_tokens) || 0,
+      })),
+    };
+  } catch {
+    return vacio;
+  }
 }
 
 /* ─────────────────── correos: disparo manual (solo admin) ─────────────────── */

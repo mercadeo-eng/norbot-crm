@@ -1,7 +1,13 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
-import type { VendedorInfo } from "./types";
+import type { VendedorInfo, VendedorPerfil } from "./types";
 
-type VendedorMeta = { role?: string; cuentas?: string[]; nombre?: string; vendedor_num?: number };
+type VendedorMeta = {
+  role?: string;
+  cuentas?: string[];
+  nombre?: string;
+  vendedor_num?: number;
+  perfil?: VendedorPerfil;
+};
 
 function userToVendedor(u: User): VendedorInfo {
   const meta = (u.app_metadata ?? {}) as VendedorMeta;
@@ -11,6 +17,7 @@ function userToVendedor(u: User): VendedorInfo {
     nombre: meta.nombre || (u.email ?? "").split("@")[0],
     num: Number(meta.vendedor_num) || 0,
     cuentas: Array.isArray(meta.cuentas) ? meta.cuentas : [],
+    perfil: meta.perfil && typeof meta.perfil === "object" ? meta.perfil : undefined,
   };
 }
 
